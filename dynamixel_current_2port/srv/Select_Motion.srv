@@ -1,0 +1,4 @@
+bool finish
+---
+int8 select_motion
+float64 distance

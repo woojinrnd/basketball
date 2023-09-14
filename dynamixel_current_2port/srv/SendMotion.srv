@@ -1,0 +1,14 @@
+bool SM_finish
+bool TA_finish
+bool UD_finish
+bool RL_finish
+bool EM_finish
+int32 request_id # Unique request ID
+---
+int8 select_motion
+float64 distance
+float64 turn_angle
+float64 ud_neckangle
+float64 rl_neckangle
+bool emergency
+bool success # Response success status

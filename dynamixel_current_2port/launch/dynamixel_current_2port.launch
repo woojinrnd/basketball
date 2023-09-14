@@ -1,0 +1,7 @@
+<launch>
+	<node name="Dynamixel" pkg="dynamixel_current_2port" type="dynamixel_current_2port" output="screen">
+	<!-- <node name="FSR_Sensor" pkg="rosserial_python" type="serial_node.py" output="screen">
+        <param name="port"  type="string" value="/dev/ttyACM0"/>
+        <param name="baud"  type = "int"  value="57600"/> -->
+	</node>
+</launch>

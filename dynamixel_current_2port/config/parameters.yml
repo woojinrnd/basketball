@@ -1,0 +1,16 @@
+%YAML:1.0
+---
+HSVParams:
+   h_min: 1063328512
+   h_max: 1108267370
+   s_min: 63443648
+   s_max: 32766
+   v_min: 63443936
+   v_max: 32766
+LABParams:
+   l_min: 63443920
+   l_max: 32766
+   a_min: 104400487
+   a_max: 32603
+   b_min: -11199877
+   b_max: 32602
