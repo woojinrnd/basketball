@@ -211,7 +211,7 @@ void Img_proc::realsense_thread()
 
             Eigen::Vector3f normal_vector;
 
-            auto Hoop = Hoop_Detect(colorMat, depthMat, depth_frame);
+            auto Hoop = Hoop_Detect(colorMat, depthMat, depth_frame);  
 
             colorMat = std::get<0>(Hoop);
 
