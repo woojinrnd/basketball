@@ -119,15 +119,7 @@ public:
     void Running_Mode_Decision();
     void callbackThread();
     void startMode();
-    // void stopMode();
-    // void playMotion(float motion_index);
-    // void EmergencyPublish(bool _emergency);
 
-    // bool playMotion(dynamixel_current_2port::Select_Motion::Request &req, dynamixel_current_2port::Select_Motion::Response &res);
-    // bool turn_angle(dynamixel_current_2port::Turn_Angle::Request &req, dynamixel_current_2port::Turn_Angle::Response &res);
-    // bool Move_UD_NeckAngle(dynamixel_current_2port::UD_NeckAngle::Request &req, dynamixel_current_2port::UD_NeckAngle::Response &res);
-    // bool Move_RL_NeckAngle(dynamixel_current_2port::RL_NeckAngle::Request &req, dynamixel_current_2port::RL_NeckAngle::Response &res);
-    // bool Emergency(dynamixel_current_2port::Emergency::Request &req, dynamixel_current_2port::Emergency::Response &res);
     bool SendMotion(dynamixel_current_2port::SendMotion::Request &req, dynamixel_current_2port::SendMotion::Response &res);
 
     std::tuple<int8_t, double> playMotion();
@@ -136,19 +128,22 @@ public:
     double Move_RL_NeckAngle();
     bool Emergency();
 
-    void imuDataCallback(const sensor_msgs::Imu::ConstPtr &msg);
-
     // Publish & Subscribe
     // ros::Publisher Emergency_pub_;
-    ros::Subscriber imu_data_sub_;
+    // IMU
+    void IMUsensorCallback(const std_msgs::Float32::ConstPtr &IMU);
+    ros::Subscriber IMU_sensor_x_subscriber_; ///< Gets IMU Sensor data from Sensor_node
+    ros::Subscriber IMU_sensor_y_subscriber_; ///< Gets IMU Sensor data from Sensor_node
+    ros::Subscriber IMU_sensor_z_subscriber_; ///< Gets IMU Sensor data from Sensor_node
+
+    bool stop_fallen_check_;
+    double present_pitch_;
+    double present_roll_;
+    Eigen::VectorXd RPY = Eigen::VectorXd::Zero(3); // Roll Pitch Yaw
 
     // Server && Client
-    // ros::ServiceServer motion_index_server_;
-    // ros::ServiceServer turn_angle_server_;
-    // ros::ServiceServer UD_NeckAngle_server_;
-    // ros::ServiceServer RL_NeckAngle_server_;
-    // ros::ServiceServer Emergency_server_;
     ros::ServiceServer SendMotion_server_;
+
 
     // ********************************************** FUNCTION ************************************************** //
 
@@ -324,10 +319,6 @@ private:
     bool huddle_det_stop_flg_ = false;
     bool corner_det_stop_flg_ = false;
     int8_t Wall_mode = 0;
-
-    bool stop_fallen_check_;
-    double present_pitch_;
-    double present_roll_;
 
     bool Emergency_;
 

@@ -131,6 +131,7 @@ public:
     void Set_img_proc_Shoot_det(bool img_proc_adjust_det);
     void Set_img_proc_No_Hoop_det(bool img_proc_no_hoop_det);
     void Set_img_proc_stop_det(bool img_proc_stop_det);
+    void Set_img_proc_adjust_number(int8_t img_proc_adjust_number);
     void Set_img_proc_wall_number(int8_t img_proc_adjust_number);
 
     void Set_gradient(double gradient);

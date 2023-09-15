@@ -10,6 +10,7 @@ Callback::Callback(Trajectory *trajectoryPtr, IK_Function *IK_Ptr, Dxl *dxlPtr)
     ros::NodeHandle nh(ros::this_node::getName());
     boost::thread queue_thread = boost::thread(boost::bind(&Callback::callbackThread, this));
     boost::thread imu_thread = boost::thread(boost::bind(&Callback::IMUThread, this));
+    
     trajectoryPtr->Ref_RL_x = MatrixXd::Zero(1, 675);
     trajectoryPtr->Ref_LL_x = MatrixXd::Zero(1, 675);
     trajectoryPtr->Ref_RL_y = -0.06 * MatrixXd::Ones(1, 675);

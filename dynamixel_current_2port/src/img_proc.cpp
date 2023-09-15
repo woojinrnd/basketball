@@ -38,7 +38,7 @@ void Img_proc::create_color_range_trackbar(const std::string &window_name)
 void Img_proc::webcam_thread()
 {
     // // // TEST
-    // Set_img_proc_wall_det(true); 
+    // Set_img_proc_wall_det(true);
     // Set_img_proc_corner_number(1);
 
     // CAMERA INIT
@@ -79,7 +79,7 @@ void Img_proc::webcam_thread()
     cv::Mat frame, hsv_frame_white, hsv_frame_yellow, thresh_frame_white, thresh_frame_yellow, gray;
 
     while (ros::ok())
-    {        
+    {
         cap >> frame;
         if (frame.empty())
             break;
@@ -94,54 +94,59 @@ void Img_proc::webcam_thread()
 }
 
 // // ********************************************** 3D THREAD************************************************** //
-std::tuple<cv::Mat, double, cv::Point> Img_proc::Hoop_Detect(cv::Mat color, cv::Mat depth, rs2::depth_frame depth_frame) {
-  cv::Mat gray, thresh, extracted_object;
 
-  double distance_hoop = 0;
+std::tuple<cv::Mat, double, cv::Point> Img_proc::Hoop_Detect(cv::Mat color, cv::Mat depth, rs2::depth_frame depth_frame)
+{
+    cv::Mat gray, thresh, extracted_object;
 
-  cv::cvtColor(depth, gray, cv::COLOR_BGR2GRAY);
-  int pos = cv::getTrackbarPos("pos", "Distance Measurement");
-  cv::threshold(gray, thresh, pos, 255, cv::THRESH_BINARY);
+    double distance_hoop = 0;
 
-  extracted_object = cv::Mat::zeros(color.size(), color.type());
+    cv::cvtColor(depth, gray, cv::COLOR_BGR2GRAY);
+    int pos = cv::getTrackbarPos("pos", "Distance Measurement");
+    cv::threshold(gray, thresh, pos, 255, cv::THRESH_BINARY);
 
-  std::vector<std::vector<cv::Point>> contours;
-  cv::findContours(thresh, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    extracted_object = cv::Mat::zeros(color.size(), color.type());
 
-  double max_area = 0;
-  cv::Point center;
-  std::vector<cv::Point> largest_contour;
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(thresh, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-  for (const auto &contour : contours) {
-      double area = contourArea(contour);
-      if (area > max_area) {
-          max_area = area;
-          largest_contour = contour;
-      }
-  }
+    double max_area = 0;
+    cv::Point center;
+    std::vector<cv::Point> largest_contour;
 
-  if (!largest_contour.empty() && max_area > 500) {
-      cv::Moments m = cv::moments(largest_contour);
-      if (m.m00 != 0) {
-          center = cv::Point(m.m10 / m.m00, m.m01 / m.m00);
-          cv::Mat singleContourMask = cv::Mat::zeros(thresh.size(), thresh.type());
-          cv::drawContours(singleContourMask, std::vector<std::vector<cv::Point>>{largest_contour}, -1, cv::Scalar(255), cv::FILLED);
+    for (const auto &contour : contours)
+    {
+        double area = contourArea(contour);
+        if (area > max_area)
+        {
+            max_area = area;
+            largest_contour = contour;
+        }
+    }
 
-          cv::Mat singleExtractedObject;
-          color.copyTo(singleExtractedObject, singleContourMask);
-          singleExtractedObject.copyTo(extracted_object, singleContourMask);
+    if (!largest_contour.empty() && max_area > 500)
+    {
+        cv::Moments m = cv::moments(largest_contour);
+        if (m.m00 != 0)
+        {
+            center = cv::Point(m.m10 / m.m00, m.m01 / m.m00);
+            cv::Mat singleContourMask = cv::Mat::zeros(thresh.size(), thresh.type());
+            cv::drawContours(singleContourMask, std::vector<std::vector<cv::Point>>{largest_contour}, -1, cv::Scalar(255), cv::FILLED);
 
-          cv::circle(extracted_object, center, 1, cv::Scalar(0,255,0), 2);
-          distance_hoop = depth_frame.get_distance(center.x, center.y);
-          putText(extracted_object, "Distance: " + std::to_string(distance_hoop), cv::Point(10, 25), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0,255,0), 2);
-      }
-  }
-  cv::cvtColor(depth, gray, cv::COLOR_BGR2GRAY);
-  int pos2 = cv::getTrackbarPos("pos", "Distance Measurement");
-  cv::threshold(gray, thresh, pos, 255, cv::THRESH_BINARY);
+            cv::Mat singleExtractedObject;
+            color.copyTo(singleExtractedObject, singleContourMask);
+            singleExtractedObject.copyTo(extracted_object, singleContourMask);
 
+            cv::circle(extracted_object, center, 1, cv::Scalar(0, 255, 0), 2);
+            distance_hoop = depth_frame.get_distance(center.x, center.y);
+            putText(extracted_object, "Distance: " + std::to_string(distance_hoop), cv::Point(10, 25), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+        }
+    }
+    cv::cvtColor(depth, gray, cv::COLOR_BGR2GRAY);
+    int pos2 = cv::getTrackbarPos("pos", "Distance Measurement");
+    cv::threshold(gray, thresh, pos, 255, cv::THRESH_BINARY);
 
-  return std::make_tuple(extracted_object, distance_hoop, center);
+    return std::make_tuple(extracted_object, distance_hoop, center);
 }
 
 int Img_proc::Hoop_Location(cv::Mat &color, cv::Point center)
@@ -153,14 +158,17 @@ int Img_proc::Hoop_Location(cv::Mat &color, cv::Point center)
 
     rectangle(color, cv::Point(x_left_bound, y_top_bound), cv::Point(x_right_bound, y_bottom_bound), cv::Scalar(255, 255, 0), 2);
 
-    if(center.x >= x_left_bound && center.x <= x_right_bound &&
-           center.y >= y_top_bound && center.y <= y_bottom_bound) {
-            putText(color, "Inside", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
-            return 1;  // center가 영역 안에 있음을 나타내는 값 반환
-        } else {
-            putText(color, "Outside", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
-            return 0;  // center가 영역 밖에 있음을 나타내는 값 반환
-        }
+    if (center.x >= x_left_bound && center.x <= x_right_bound &&
+        center.y >= y_top_bound && center.y <= y_bottom_bound)
+    {
+        putText(color, "Inside", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+        return 1; // center가 영역 안에 있음을 나타내는 값 반환
+    }
+    else
+    {
+        putText(color, "Outside", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
+        return 0; // center가 영역 밖에 있음을 나타내는 값 반환
+    }
 }
 
 void Img_proc::realsense_thread()
@@ -207,11 +215,11 @@ void Img_proc::realsense_thread()
 
             cv::Mat colorMat(cv::Size(w, h), CV_8UC3, (void *)color.get_data(), cv::Mat::AUTO_STEP);
             cv::Mat depthMat(cv::Size(w, h), CV_8UC3, (void *)depth.get_data(), cv::Mat::AUTO_STEP);
-            cv::Mat depth_dist(cv::Size(w, h), CV_16UC1, (void*)depth_frame.get_data(), cv::Mat::AUTO_STEP);
+            cv::Mat depth_dist(cv::Size(w, h), CV_16UC1, (void *)depth_frame.get_data(), cv::Mat::AUTO_STEP);
 
             Eigen::Vector3f normal_vector;
 
-            auto Hoop = Hoop_Detect(colorMat, depthMat, depth_frame);  
+            auto Hoop = Hoop_Detect(colorMat, depthMat, depth_frame);
 
             colorMat = std::get<0>(Hoop);
 
@@ -230,226 +238,6 @@ void Img_proc::realsense_thread()
     {
         std::cerr << "An error occurred during streaming: " << e.what() << std::endl;
     }
-}
-
-// *************************************************************************  *****************************************************************************//
-
-void Img_proc::RGB2HSV(const cv::Mat &rgb_image, cv::Mat &hsv_image)
-{
-    cv::cvtColor(rgb_image, hsv_image, cv::COLOR_BGR2HSV);
-    morphologyEx(hsv_image, hsv_image, MORPH_OPEN, Mat(), Point(-1, -1), 1);
-    morphologyEx(hsv_image, hsv_image, MORPH_ERODE, Mat(), Point(-1, -1), -5);
-}
-
-void Img_proc::RGB2LAB(const cv::Mat &rgb_image, cv::Mat &lab_image)
-{
-    cv::cvtColor(rgb_image, lab_image, cv::COLOR_BGR2Lab);
-    morphologyEx(lab_image, lab_image, MORPH_OPEN, Mat(), Point(-1, -1), 1);
-}
-
-void Img_proc::saveParameters(const std::string &filename)
-{
-    cv::FileStorage fs(filename, cv::FileStorage::WRITE);
-    if (!fs.isOpened())
-    {
-        std::cerr << "Failed to open configuration file for writing." << std::endl;
-        return;
-    }
-
-    fs << "HSVParams"
-       << "{"
-       << "h_min" << static_cast<int>(h_min) << "h_max" << static_cast<int>(h_max)
-       << "s_min" << static_cast<int>(s_min) << "s_max" << static_cast<int>(s_max)
-       << "v_min" << static_cast<int>(v_min) << "v_max" << static_cast<int>(v_max) << "}";
-
-    fs << "LABParams"
-       << "{"
-       << "l_min" << static_cast<int>(l_min) << "l_max" << static_cast<int>(l_max)
-       << "a_min" << static_cast<int>(a_min) << "a_max" << static_cast<int>(a_max)
-       << "b_min" << static_cast<int>(b_min) << "b_max" << static_cast<int>(b_max) << "}";
-
-    fs.release();
-}
-
-void Img_proc::loadParameters(const std::string &filename)
-{
-    cv::FileStorage fs(filename, cv::FileStorage::READ);
-    if (!fs.isOpened())
-    {
-        std::cerr << "Failed to open configuration file for reading." << std::endl;
-        return;
-    }
-
-    cv::FileNode hsvParams = fs["HSVParams"];
-    h_min = static_cast<int>(hsvParams["h_min"]);
-    h_max = static_cast<int>(hsvParams["h_max"]);
-    s_min = static_cast<int>(hsvParams["s_min"]);
-    s_max = static_cast<int>(hsvParams["s_max"]);
-    v_min = static_cast<int>(hsvParams["v_min"]);
-    v_max = static_cast<int>(hsvParams["v_max"]);
-
-    cv::FileNode labParams = fs["LABParams"];
-    l_min = static_cast<int>(labParams["l_min"]);
-    l_max = static_cast<int>(labParams["l_max"]);
-    a_min = static_cast<int>(labParams["a_min"]);
-    a_max = static_cast<int>(labParams["a_max"]);
-    b_min = static_cast<int>(labParams["b_min"]);
-    b_max = static_cast<int>(labParams["b_max"]);
-
-    fs.release();
-}
-
-void Img_proc::running_process()
-{
-    vcap >> Origin_img; // Read a frame from the camera
-
-    if (Origin_img.empty())
-    {
-        std::cerr << "Empty frame received from the camera!" << std::endl;
-        return;
-    }
-
-    cv::Mat hsv_image, lab_image;
-    RGB2HSV(Origin_img, hsv_image);
-    RGB2LAB(Origin_img, lab_image);
-
-    // Create binary masks for the specified color ranges in HSV and LAB color spaces
-    cv::Mat hsv_binary_mask, lab_binary_mask;
-
-    // Get current HSV and LAB threshold values from trackbars
-    int h_min = cv::getTrackbarPos("H min", "Threshold Adjustments");
-    int h_max = cv::getTrackbarPos("H max", "Threshold Adjustments");
-    int s_min = cv::getTrackbarPos("S min", "Threshold Adjustments");
-    int s_max = cv::getTrackbarPos("S max", "Threshold Adjustments");
-    int v_min = cv::getTrackbarPos("V min", "Threshold Adjustments");
-    int v_max = cv::getTrackbarPos("V max", "Threshold Adjustments");
-    int l_min = cv::getTrackbarPos("L min", "Threshold Adjustments");
-    int l_max = cv::getTrackbarPos("L max", "Threshold Adjustments");
-    int a_min = cv::getTrackbarPos("A min", "Threshold Adjustments");
-    int a_max = cv::getTrackbarPos("A max", "Threshold Adjustments");
-    int b_min = cv::getTrackbarPos("B min", "Threshold Adjustments");
-    int b_max = cv::getTrackbarPos("B max", "Threshold Adjustments");
-
-    cv::Scalar hsv_lower_thresh(h_min, s_min, v_min);
-    cv::Scalar hsv_upper_thresh(h_max, s_max, v_max);
-    cv::Scalar lab_lower_thresh(l_min, a_min, b_min);
-    cv::Scalar lab_upper_thresh(l_max, a_max, b_max);
-
-    cv::inRange(hsv_image, hsv_lower_thresh, hsv_upper_thresh, hsv_binary_mask);
-    cv::inRange(lab_image, lab_lower_thresh, lab_upper_thresh, lab_binary_mask);
-
-    // Combine binary masks from both color spaces
-    // cv::Mat final_binary_mask;
-    Mat field;
-    cv::bitwise_and(hsv_binary_mask, lab_binary_mask, final_binary_mask);
-
-    // Apply morphological operations if needed (e.g., to remove noise)
-    cv::Mat morph_kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
-    cv::morphologyEx(final_binary_mask, final_binary_mask, cv::MORPH_OPEN, morph_kernel);
-
-    field = final_binary_mask.clone();
-
-    // Calculate object area
-    std::vector<std::vector<cv::Point>> contours;
-    std::vector<cv::Point> hull;
-    std::vector<cv::Point> approxpoly;
-    // cv::findContours(final_binary_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
-    cv::findContours(field, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
-
-    int _size = static_cast<int>(contours.size());
-    int area_max = 0;
-    int label_num = 0;
-
-    if (_size > 0)
-    {
-        for (int i = 0; i < _size; i++)
-        {
-            int area = cvRound(cv::contourArea(contours[i]));
-            area_max = std::max(area_max, area);
-        }
-
-        if (area_max >= 2000)
-        {
-            // ROS_WARN("img_proc_line_det : %d", Get_img_proc_line_det());
-        }
-
-        else if (500 < area_max < 2000)
-        {
-            // ROS_ERROR("img_proc_line_det : %d", Get_img_proc_line_det());
-        }
-
-        cv::convexHull(cv::Mat(contours[label_num]), hull, false);
-        // cv::fillConvexPoly(Origin_img, hull, cv::Scalar(255), 8);
-        cv::fillConvexPoly(field, hull, cv::Scalar(255), 8);
-
-        cv::Scalar color(0, 0, 255); // Red color for text
-        std::string area_text = "Area: " + std::to_string(area_max) + " pixels";
-
-        // Draw the area information on the frame
-        cv::putText(Origin_img, area_text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, color, 2);
-    }
-
-    if (contours.empty())
-    {
-        // ROS_ERROR("img_proc_no_line_det : %d", Get_img_proc_no_line_det());
-        // cout << "no area" << endl;
-    }
-    cv::morphologyEx(field, field, cv::MORPH_ERODE, cv::Mat(), cv::Point(-1, -1), 5);
-    cv::bitwise_and(field, ~final_binary_mask, field);
-    cv::morphologyEx(field, field, cv::MORPH_OPEN, cv::Mat(), cv::Point(-1, -1), 2);
-
-    // Show the original frame and the final binary mask
-    cv::imshow("Original Frame", Origin_img);
-    cv::imshow("Final Binary Mask", final_binary_mask);
-}
-
-void Img_proc::init()
-{
-    // // set node loop rate
-    // ros::Rate loop_rate(SPIN_RATE);
-    // // vcap = VideoCapture(CAP_DSHOW + webcam_id);
-    // vcap = VideoCapture(webcam_id);
-    // vcap.set(cv::CAP_PROP_FRAME_WIDTH, webcam_width);
-    // vcap.set(cv::CAP_PROP_FRAME_HEIGHT, webcam_height);
-    // vcap.set(cv::CAP_PROP_FPS, webcam_fps);
-
-    // if (!vcap.isOpened())
-    // {
-    //     std::cerr << "Could not open the webcam\n";
-    //     return;
-    // }
-
-    // cv::namedWindow("Threshold Adjustments", cv::WINDOW_NORMAL);
-    // cv::createTrackbar("H min", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("H max", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("S min", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("S max", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("V min", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("V max", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("L min", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("L max", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("A min", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("A max", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("B min", "Threshold Adjustments", nullptr, 255);
-    // cv::createTrackbar("B max", "Threshold Adjustments", nullptr, 255);
-
-    // cv::setTrackbarPos("H min", "Threshold Adjustments", 77);
-    // cv::setTrackbarPos("H max", "Threshold Adjustments", 235);
-
-    // cv::setTrackbarPos("S min", "Threshold Adjustments", 131);
-    // cv::setTrackbarPos("S max", "Threshold Adjustments", 214);
-
-    // cv::setTrackbarPos("V min", "Threshold Adjustments", 60);
-    // cv::setTrackbarPos("V max", "Threshold Adjustments", 156);
-
-    // cv::setTrackbarPos("L min", "Threshold Adjustments", 16);
-    // cv::setTrackbarPos("L max", "Threshold Adjustments", 151);
-
-    // cv::setTrackbarPos("A min", "Threshold Adjustments", 115);
-    // cv::setTrackbarPos("A max", "Threshold Adjustments", 177);
-
-    // cv::setTrackbarPos("B min", "Threshold Adjustments", 66);
-    // cv::setTrackbarPos("B max", "Threshold Adjustments", 173);
 }
 
 // ********************************************** GETTERS ************************************************** //
@@ -552,7 +340,7 @@ void Img_proc::Set_distance(double distance)
     this->distance_ = distance;
 }
 
-void Img_proc::Set_img_proc_wall_number(int8_t img_proc_adjust_number)
+void Img_proc::Set_img_proc_adjust_number(int8_t img_proc_adjust_number)
 {
     std::lock_guard<std::mutex> lock(mtx_img_proc_adjust_number_);
     this->img_proc_adjust_number_ = img_proc_adjust_number;

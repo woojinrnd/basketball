@@ -34,7 +34,7 @@ void Move_Decision::process()
     tmp_img_proc_shoot_flg_ = img_procPtr->Get_img_proc_Shoot_det();
     tmp_img_proc_no_hoop_flg_ = img_procPtr->Get_img_proc_No_Hoop_det();
 
-    //////////////////////////////////////   LINE MODE    //////////////////////////////////////
+    //////////////////////////////////////   FAR HOOP MODE    //////////////////////////////////////
 
     if (tmp_img_proc_far_hoop_flg_)
     {
@@ -54,7 +54,7 @@ void Move_Decision::process()
         }
     }
 
-    //////////////////////////////////////   NO LINE MODE    //////////////////////////////////////
+    //////////////////////////////////////   ADJUST MODE    //////////////////////////////////////
 
     else if (tmp_img_proc_adjust_flg_)
     {
@@ -78,7 +78,7 @@ void Move_Decision::process()
         }
     }
 
-    //////////////////////////////////////   HUDDLE MODE    //////////////////////////////////////
+    //////////////////////////////////////   SHOOT MODE    //////////////////////////////////////
 
     else if (tmp_img_proc_shoot_flg_)
     {
@@ -99,7 +99,7 @@ void Move_Decision::process()
         }
     }
 
-    //////////////////////////////////////   CORNER MODE    //////////////////////////////////////
+    //////////////////////////////////////   NO HOOP MODE    //////////////////////////////////////
 
     else if (tmp_img_proc_no_hoop_flg_)
     {
@@ -183,6 +183,7 @@ void Move_Decision::Running_Mode_Decision()
     }
 }
 
+
 void Move_Decision::FAR_HOOP_mode()
 {
     hoop_distance = img_procPtr->Get_distance();
@@ -198,21 +199,9 @@ void Move_Decision::FAR_HOOP_mode()
 
     else if (!Get_select_motion_on_flg() && Get_SM_req_finish() && robot_forward == false)
     {
-        far_hoop_motion = Motion_Index::Forward_4step;
+        far_hoop_motion = Motion_Index::InitPose;
         Set_select_motion_on_flg(true);
         Set_motion_index_(far_hoop_motion);
-    }
-}
-
-void Move_Decision::DistanceDecision(double distance_)
-{
-    if (distance_ > Green_area_dis) // judged to be a straight line. If it exists between the slopes, it is a straight line.
-    {
-        robot_forward = true;
-    }
-    else if (distance_ < Green_area_dis)
-    {
-        robot_forward = false;
     }
 }
 
@@ -390,6 +379,11 @@ void Move_Decision::NO_HOOP_mode()
             Set_motion_index_(Motion_Index::Step_in_place);
             Set_select_motion_on_flg(true);
         }
+        if (!Get_turn_angle_on_flg() && Get_TA_req_finish())
+        {
+            Set_turn_angle_(10);
+            Set_turn_angle_on_flg(true);
+        }
     }
 
     else if (tmp_delta_x > 0) // LEFT
@@ -399,6 +393,12 @@ void Move_Decision::NO_HOOP_mode()
             Set_motion_index_(Motion_Index::Step_in_place);
             Set_select_motion_on_flg(true);
         }
+        
+        if (!Get_turn_angle_on_flg() && Get_TA_req_finish())
+        {
+            Set_turn_angle_(10);
+            Set_turn_angle_on_flg(true);
+        }
     }
 }
 
@@ -407,8 +407,10 @@ void Move_Decision::callbackThread()
     ros::NodeHandle nh(ros::this_node::getName());
 
     // Subscriber & Publisher
-    // Emergency_pub_ = nh.advertise<std_msgs::Bool>("Emergency", 0);
-    imu_data_sub_ = nh.subscribe("imu", 1, &Move_Decision::imuDataCallback, this);
+    // IMU_sensor_x_subscriber_ = nh.subscribe("/Angle/x", 1000, &Move_Decision::IMUsensorCallback, this);
+    IMU_sensor_y_subscriber_ = nh.subscribe("/Angle/y", 1000, &Move_Decision::IMUsensorCallback, this);
+    // IMU_sensor_z_subscriber_ = nh.subscribe("/Angle/z", 1000, &Move_Decision::IMUsensorCallback, this);
+
 
     // Server
     // motion_index_server_ = nh.advertiseService("Select_Motion", &Move_Decision::playMotion, this);
@@ -689,18 +691,22 @@ void Move_Decision::startMode()
     Set_motion_index_(Motion_Index::InitPose);
 }
 
-void Move_Decision::imuDataCallback(const sensor_msgs::Imu::ConstPtr &msg)
+void Move_Decision::IMUsensorCallback(const std_msgs::Float32::ConstPtr &IMU)
 {
     if (stop_fallen_check_ == true)
         return;
 
-    Eigen::Quaterniond orientation(msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z);
-    Eigen::MatrixXd rpy_orientation = convertQuaternionToRPY(orientation);
-    rpy_orientation *= (180 / M_PI);
+    // RPY(0) = IMU->data;
+    RPY(1) = IMU->data;
+    // RPY(2) = IMU->data;
 
-    //   ROS_INFO_COND(DEBUG_PRINT, "Roll : %3.2f, Pitch : %2.2f", rpy_orientation.coeff(0, 0), rpy_orientation.coeff(1, 0));
+    double pitch = RPY(1) * 57.2958;
 
-    double pitch = rpy_orientation.coeff(1, 0);
+    // Quaternino2RPY();
+    // sensorPtr->RPY *= (180 / M_PI);
+    // double roll = sensorPtr->RPY(0);
+    // double pitch = sensorPtr->RPY(1);
+    // double yaw = sensorPtr->RPY(2);
 
     double alpha = 0.4;
     if (present_pitch_ == 0)
@@ -709,11 +715,14 @@ void Move_Decision::imuDataCallback(const sensor_msgs::Imu::ConstPtr &msg)
         present_pitch_ = present_pitch_ * (1 - alpha) + pitch * alpha;
 
     if (present_pitch_ > FALL_FORWARD_LIMIT)
-        stand_status_ = Fallen_Forward;
+        Set_stand_status_(Stand_Status::Fallen_Forward);
     else if (present_pitch_ < FALL_BACK_LIMIT)
-        stand_status_ = Fallen_Back;
+        Set_stand_status_(Stand_Status::Fallen_Back);
     else
-        stand_status_ = Stand;
+        Set_stand_status_(Stand_Status::Stand);
+
+    // ROS_ERROR("STAND_STAUS : %d", Get_stand_status_());
+    // ROS_ERROR("PITCH : %f", pitch);
 }
 
 // ********************************************** GETTERS ************************************************** //
@@ -1160,5 +1169,17 @@ void Move_Decision::Running_Info()
         break;
 
         ROS_INFO("Running_Mode : %s", tmp_running.c_str());
+    }
+}
+
+void Move_Decision::DistanceDecision(double distance_)
+{
+    if (distance_ > Green_area_dis) // judged to be a straight line. If it exists between the slopes, it is a straight line.
+    {
+        robot_forward = true;
+    }
+    else if (distance_ < Green_area_dis)
+    {
+        robot_forward = false;
     }
 }
