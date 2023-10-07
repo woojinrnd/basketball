@@ -299,6 +299,12 @@ double Img_proc::Get_adjust_angle() const
     return adjust_angle_;
 }
 
+bool Img_proc::Get_contain_adjust_to_foot() const
+{
+    std::lock_guard<std::mutex> lock(mtx_contain_adjust_to_foot);
+    return contain_adjust_to_foot_;
+}
+
 // ********************************************** SETTERS ************************************************** //
 
 void Img_proc::Set_img_proc_Far_Hoop_det(bool img_proc_far_hoop_det)
@@ -359,5 +365,11 @@ void Img_proc::Set_adjust_angle(double adjust_angle)
 {
     std::lock_guard<std::mutex> lock(mtx_adjust_angle);
     this->adjust_angle_ = adjust_angle;
+}
+
+void Img_proc::Set_contain_adjust_to_foot(bool contain_adjust_to_foot)
+{
+    std::lock_guard<std::mutex> lock(mtx_contain_adjust_to_foot);
+    this->contain_adjust_to_foot_ = contain_adjust_to_foot;
 }
 

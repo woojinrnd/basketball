@@ -417,7 +417,7 @@ void Callback::SelectMotion()
         IK_Ptr->Set_Angle_Compensation(135);
         indext = 50;
     }
-    
+
     else if (res_mode == Motion_Index::Step_in_place)
     {
         mode = Motion_Index::Step_in_place;
@@ -428,7 +428,7 @@ void Callback::SelectMotion()
         IK_Ptr->Set_Angle_Compensation(135);
         indext = 0;
     }
-    
+
     else if (res_mode == Motion_Index::Right_2step)
     {
         mode = Motion_Index::Right_2step;
@@ -439,7 +439,7 @@ void Callback::SelectMotion()
         IK_Ptr->Set_Angle_Compensation(135);
         indext = 50;
     }
-    
+
     else if (res_mode == Motion_Index::Forward_Nstep)
     {
         mode = Motion_Index::Forward_Nstep;
@@ -520,6 +520,14 @@ void Callback::SelectMotion()
     else if (res_mode == Motion_Index::Ready_to_throw)
     {
         mode = Motion_Index::Ready_to_throw;
+        IK_Ptr->Change_Com_Height(30);
+        trajectoryPtr->Ref_RL_x = MatrixXd::Zero(1, 100);
+        trajectoryPtr->Ref_LL_x = MatrixXd::Zero(1, 100);
+        trajectoryPtr->Ref_RL_y = -0.06 * MatrixXd::Ones(1, 100);
+        trajectoryPtr->Ref_LL_y = 0.06 * MatrixXd::Ones(1, 100);
+        trajectoryPtr->Ref_RL_z = trajectoryPtr->RF_zsimulation_sitdown(-25);
+        trajectoryPtr->Ref_LL_z = trajectoryPtr->LF_zsimulation_sitdown(-25);
+        indext = 0;
     }
 
     else if (res_mode == Motion_Index::Shoot)
@@ -618,6 +626,11 @@ void Callback::Write_Leg_Theta()
             IK_Ptr->Angle_Compensation(indext, trajectoryPtr->Ref_RL_x.cols());
         }
 
+        else if (mode == Motion_Index::Ready_to_throw)
+        {
+            IK_Ptr->BRP_Simulation(trajectoryPtr->Ref_RL_x, trajectoryPtr->Ref_RL_y, trajectoryPtr->Ref_RL_z, trajectoryPtr->Ref_LL_x, trajectoryPtr->Ref_LL_y, trajectoryPtr->Ref_LL_z, indext);
+            IK_Ptr->Angle_Compensation(indext, trajectoryPtr->Ref_RL_x.cols());
+        }
         if (indext >= trajectoryPtr->Ref_RL_x.cols() - 2 && indext != 0)
         {
             indext -= 1;
@@ -645,7 +658,7 @@ void Callback::Write_Leg_Theta()
 
 void Callback::Write_Arm_Theta()
 {
-    //Grab the ball
+    // Grab the ball
     if (mode == Motion_Index::Grab)
     {
         All_Theta[20] = 45 * DEG2RAD;
@@ -661,7 +674,7 @@ void Callback::Write_Arm_Theta()
         All_Theta[12] = 0; // 0 * DEG2RAD;
     }
 
-    //Throw
+    // Throw
     else if (mode == Motion_Index::Shoot)
     {
         All_Theta[14] = 0 * DEG2RAD - 60 * DEG2RAD;

@@ -36,28 +36,28 @@ class Move_Decision
 public:
     enum Motion_Index
     {
-    InitPose = 0,
-    Forward_2step = 1,
-    Left_2step = 2,
-    Step_in_place = 3,
-    Right_2step = 4,
-    Forward_Nstep = 5,
-    ForWard_fast4step = 7,
-    FWD_UP = 8,
-    BWD_UP = 9,
-    Forward_Halfstep = 10,
-    Left_Halfstep = 11,
-    Right_Halfstep = 12,
-    Back_Halfstep = 13,
-    Forward_1step = 14,
-    Left_6step = 15,
-    Right_6step = 16,
-    Shoot = 17,
-    Ready_to_throw = 18,
-    Grab = 20,
-    START = 50,
-    NONE = 99,
-    FINISH = 100,
+        InitPose = 0,
+        Forward_2step = 1,
+        Left_2step = 2,
+        Step_in_place = 3,
+        Right_2step = 4,
+        Forward_Nstep = 5,
+        ForWard_fast4step = 7,
+        FWD_UP = 8,
+        BWD_UP = 9,
+        Forward_Halfstep = 10,
+        Left_Halfstep = 11,
+        Right_Halfstep = 12,
+        Back_Halfstep = 13,
+        Forward_1step = 14,
+        Left_6step = 15,
+        Right_6step = 16,
+        Shoot = 17,
+        Ready_to_throw = 18,
+        Grab = 20,
+        START = 50,
+        NONE = 99,
+        FINISH = 100,
     };
 
     enum Running_Mode
@@ -155,7 +155,6 @@ public:
 
     // Server && Client
     ros::ServiceServer SendMotion_server_;
-
 
     // ********************************************** FUNCTION ************************************************** //
 
@@ -268,17 +267,17 @@ public:
     int8_t img_proc_adjust_delta_x = 0;
     int8_t adjust_motion = 0;
     bool img_proc_contain_adjust_to_foot = false; // huddle Y Point
-    bool contain_adjust_X = false; // adjust X Point
-    bool contain_adjust_Y = false; // adjust Y Point
-    bool adjust_posture = false;   // adjust gradient
+    bool contain_adjust_X = false;                // adjust X Point
+    bool contain_adjust_Y = false;                // adjust Y Point
+    bool adjust_posture = false;                  // adjust gradient
     bool adjust_seq_finish = false;
     double img_proc_adjust_angle = 0;
     double adjust_actual_angle = 0;
 
     string Str_ADJUST_SEQUENCE_0 = "ADJUST_SEQUENCE_0 : POSTURE CONTROL";
     string Str_ADJUST_SEQUENCE_1 = "ADJUST_SEQUENCE_1 : POSITION CONTROL";
-    string Str_ADJUST_SEQUENCE_2 = "ADJUST_SEQUENCE_3 : Ready_to_throw";
-    string Str_ADJUST_SEQUENCE_3 = "ADJUST_SEQUENCE_2 : POSTURE CONTROL ONE MORE TIME";
+    string Str_ADJUST_SEQUENCE_2 = "ADJUST_SEQUENCE_2 : POSTURE CONTROL ONE MORE TIME";
+    string Str_ADJUST_SEQUENCE_3 = "ADJUST_SEQUENCE_3 : Ready_to_throw";
     string Str_ADJUST_SEQUENCE_4 = "ADJUST_SEQUENCE_4 : SHOOT";
     string Str_ADJUST_SEQUENCE_5 = "ADJUST_SEQUENCE_5 : INITIALIZING";
 
@@ -286,7 +285,6 @@ public:
     int8_t tmp_delta_x = 0;
     int8_t nohoop_motion = 0;
     double nohoop_actual_angle = 0;
-
 
     /////////////////////// WAKEUP_MODE ///////////////////////
     // WakeUp_seq = 0 : Initial
@@ -401,7 +399,6 @@ private:
     mutable std::mutex mtx_turn_angle_on_flg_;
     mutable std::mutex mtx_emergency_on_flg_;
     mutable std::mutex mtx_distance_on_flg_;
-    
 
     mutable std::mutex mtx_Emergency_;
     mutable std::mutex mtx_ProcessON_;

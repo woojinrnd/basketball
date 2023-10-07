@@ -124,6 +124,7 @@ public:
     double Get_delta_x() const;
     double Get_distance() const;
     double Get_adjust_angle() const;
+    bool Get_contain_adjust_to_foot() const;
 
     // ********************************************** SETTERS ************************************************** //
 
@@ -139,6 +140,7 @@ public:
     void Set_delta_x(double delta_x);
     void Set_distance(double set_distance);
     void Set_adjust_angle(double adjust_angle);
+    void Set_contain_adjust_to_foot(bool contain_adjust_to_foot);
 
     // ********************************************** running ************************************************** //
 
@@ -191,6 +193,7 @@ private:
 
     //Adjust mode
     double adjust_angle_ = 0;
+    bool contain_adjust_to_foot_ = false;
 
     /////////////////////////////////////////// Mutex ///////////////////////////////////////////
     // LINE Determine flg from img_proc
@@ -208,4 +211,5 @@ private:
     mutable std::mutex mtx_delta_x;
     //Adjust Mode
     mutable std::mutex mtx_adjust_angle;
+    mutable std::mutex mtx_contain_adjust_to_foot;
 };
