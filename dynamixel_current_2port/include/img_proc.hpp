@@ -32,7 +32,7 @@
 #define MIN_CONTOUR_AREA 50
 #define NO_LINE_DETECT_DX 160
 
-#define IMG_W 640
+#define IMG_W 848
 #define IMG_H 480
 
 #define PROP_EXPOSURE -6
@@ -42,6 +42,7 @@
 #define PROP_CONTRAST 128
 #define PROP_SATURATION 128
 
+#define ADJUST_X_MARGIN 24
 
 using namespace cv;
 using namespace std;
@@ -76,6 +77,8 @@ public:
 
     int threshold_value_white = 180;
     int threshold_value_yellow = 127;
+    int threshold_value_black = 50;
+
     const int max_value = 255;
     int hue_lower = 0;
     int hue_upper = 179;
@@ -91,6 +94,12 @@ public:
     cv::Scalar green_color = {0, 255, 0};
     cv::Scalar red_color = (0, 0, 255);
 
+    cv::Scalar lower_bound_led = {160, 150, 150};
+    cv::Scalar upper_bound_led = {170, 255, 255};
+
+    cv::Scalar lower_bound_green = {35, 50, 50};
+    cv::Scalar upper_bound_green = {85, 255, 255};
+
     bool a = 0;
 
     bool left = false;
@@ -100,14 +109,18 @@ public:
     void create_threshold_trackbar_W(const std::string &window_name);
     void create_threshold_trackbar_Y(const std::string &window_name);
     void create_color_range_trackbar(const std::string &window_name);
+    void create_threshold_trackbar_Black(const std::string &window_name);
+    std::tuple<cv::Mat, cv::Mat> extract_color(const cv::Mat &input_frame, const cv::Scalar &lower_bound, const cv::Scalar &upper_bound);
+    std::tuple<bool, cv::Point, cv::Point, cv::Point, cv::Point, double> Is_AreaThreshold(const cv::Mat& image, cv::Scalar lower_bound, cv::Scalar upper_bound, int green_area);
+
 
     // ********************************************** 3D THREAD************************************************** //
     int Hoop_Location(cv::Mat &color, cv::Point center);
-    std::tuple<cv::Mat, double, cv::Point> Hoop_Detect(cv::Mat color, cv::Mat depth, rs2::depth_frame depth_frame);
+    std::tuple<cv::Mat, cv::Point2f> Hoop_Detect(cv::Mat color, cv::Mat depth, cv::Mat depth_dist, int threshold_value);
     void realsense_thread();
 
     // Cam set
-    const int realsense_width = 640;
+    const int realsense_width = 848;
     const int realsense_height = 480;
     const int realsense_fps = 30;
 
@@ -124,7 +137,7 @@ public:
     double Get_delta_x() const;
     double Get_distance() const;
     double Get_adjust_angle() const;
-    bool Get_contain_adjust_to_foot() const;
+    int Get_contain_adjust_to_foot() const;
 
     // ********************************************** SETTERS ************************************************** //
 
@@ -140,7 +153,7 @@ public:
     void Set_delta_x(double delta_x);
     void Set_distance(double set_distance);
     void Set_adjust_angle(double adjust_angle);
-    void Set_contain_adjust_to_foot(bool contain_adjust_to_foot);
+    void Set_contain_adjust_to_foot(int contain_adjust_to_foot);
 
     // ********************************************** running ************************************************** //
 
@@ -193,7 +206,7 @@ private:
 
     //Adjust mode
     double adjust_angle_ = 0;
-    bool contain_adjust_to_foot_ = false;
+    int contain_adjust_to_foot_ = 0;
 
     /////////////////////////////////////////// Mutex ///////////////////////////////////////////
     // LINE Determine flg from img_proc

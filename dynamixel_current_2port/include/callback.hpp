@@ -46,31 +46,35 @@ public:
     Right_6step = 16,
     Shoot = 17,
     Ready_to_throw = 18,
-    Grab = 20,
+    Right_1step = 19,
+    Left_1step = 20,
+    Grab = 30,
     START = 50,
     NONE = 99,
     FINISH = 100,
   };
 
-  string Str_InitPose = "InitPose";
-  string Str_Forward_2step = "Forward_2step";
-  string Str_Forward_1step = "Forward_1step";
-  string Str_Left_2step = "Left_2step";
-  string Str_Step_in_place = "Step_in_place";
-  string Str_Right_2step = "Right_2step";
-  string Str_ForWard_fast4step = "ForWard_fast4step";
-  string Str_Forward_Nstep = "Forward_Nstep";
-  string Str_Shoot = "Shoot";
-  string Str_Ready_to_throw = "Ready to throw";
-  string Str_Forward_Halfstep = "Forward_Halfstep";
-  string Str_Left_Halfstep = "Left_Halfstep";
-  string Str_Right_Halfstep = "Right_Halfstep";
-  string Str_Back_Halfstep = "Back_Halfstep";
-  string Str_Left_6step = "Left_6step";
-  string Str_Right_6step = "Right_6step";
-  string Str_FWD_UP = "FWD_UP";
-  string Str_BWD_UP = "BWD_UP";
-  string Str_NONE = "NONE";
+    string Str_InitPose = "InitPose";
+    string Str_Forward_2step = "Forward_2step";
+    string Str_Forward_1step = "Forward_1step";
+    string Str_Left_2step = "Left_2step";
+    string Str_Step_in_place = "Step_in_place";
+    string Str_Right_2step = "Right_2step";
+    string Str_ForWard_fast4step = "ForWard_fast4step";
+    string Str_Forward_Nstep = "Forward_Nstep";
+    string Str_Shoot = "Shoot";
+    string Str_Ready_to_throw = "Ready to throw";
+    string Str_Forward_Halfstep = "Forward_Halfstep";
+    string Str_Left_Halfstep = "Left_Halfstep";
+    string Str_Right_Halfstep = "Right_Halfstep";
+    string Str_Left_1step = "Left_1step";
+    string Str_Right_1step = "Right_1step";
+    string Str_Back_1step = "Back_Halfstep";
+    string Str_Left_6step = "Left_6step";
+    string Str_Right_6step = "Right_6step";
+    string Str_FWD_UP = "FWD_UP";
+    string Str_BWD_UP = "BWD_UP";
+    string Str_NONE = "NONE";
 
   // Callback();
   Callback(Trajectory *trajectoryPtr, IK_Function *IK_Ptr, Dxl *dxlPtr);

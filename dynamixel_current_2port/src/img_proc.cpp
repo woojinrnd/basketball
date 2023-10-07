@@ -34,6 +34,65 @@ void Img_proc::create_color_range_trackbar(const std::string &window_name)
     cv::createTrackbar("Value Lower", window_name, &value_lower, 255, on_trackbar);
     cv::createTrackbar("Value Upper", window_name, &value_upper, 255, on_trackbar);
 }
+void Img_proc::create_threshold_trackbar_Black(const std::string &window_name)
+{
+    cv::createTrackbar("Threshold_Black", window_name, &threshold_value_black, max_value, on_trackbar);
+}
+
+std::tuple<bool, cv::Point, cv::Point, cv::Point, cv::Point, double> Img_proc::Is_AreaThreshold(const cv::Mat& image, cv::Scalar lower_bound, cv::Scalar upper_bound, int green_area)
+{
+    cv::Mat hsv;
+        cv::cvtColor(image, hsv, cv::COLOR_BGR2HSV);
+
+        // 초록색 영역을 이진화
+        cv::Mat mask;
+        cv::inRange(hsv, lower_bound, upper_bound, mask);
+
+        // 연결된 요소를 찾기
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+        bool is_Green = false;
+        cv::Point maxYPoint(-1, -1);
+        cv::Point minYPoint(-1, INT_MAX);
+        cv::Point maxXPoint(-1, -1);
+        cv::Point minXPoint(INT_MAX, -1);
+
+        // 각 연결된 요소의 넓이를 계산하고 green_area 픽셀 이상인지 확인
+        for (const auto& contour : contours) {
+            if (cv::contourArea(contour) >= green_area) {
+                is_Green = true;
+
+                // 극값을 찾기
+                for (const auto& pt : contour) {
+                    // y 최대
+                    if (pt.y > maxYPoint.y) {
+                        maxYPoint = pt;
+                    }
+                    // y 최소
+                    if (pt.y < minYPoint.y) {
+                        minYPoint = pt;
+                    }
+                    // x 최대 (가장 오른쪽)
+                    if (pt.x > maxXPoint.x) {
+                        maxXPoint = pt;
+                    }
+                    // x 최소 (가장 왼쪽)
+                    if (pt.x < minXPoint.x) {
+                        minXPoint = pt;
+                    }
+                }
+                break;
+            }
+        }
+
+        double deltaY = static_cast<double>(maxXPoint.y - minXPoint.y);
+        double deltaX = static_cast<double>(maxXPoint.x - minXPoint.x);
+        double angleRadians = std::atan2(deltaY, deltaX);
+        double angleDegrees = angleRadians * (180.0 / CV_PI);
+
+        return {is_Green, maxYPoint, minYPoint, maxXPoint, minXPoint, angleDegrees};
+}
 
 void Img_proc::webcam_thread()
 {
@@ -71,11 +130,6 @@ void Img_proc::webcam_thread()
     // cv::namedWindow(window_name3);
     cv::namedWindow(window_name4);
 
-    // create_color_range_trackbar(window_name1);
-    create_threshold_trackbar_W(window_name2);
-    // create_color_range_trackbar(window_name3);
-    create_threshold_trackbar_Y(window_name4);
-
     cv::Mat frame, hsv_frame_white, hsv_frame_yellow, thresh_frame_white, thresh_frame_yellow, gray;
 
     while (ros::ok())
@@ -83,6 +137,20 @@ void Img_proc::webcam_thread()
         cap >> frame;
         if (frame.empty())
             break;
+
+        auto Green_Exis = Is_AreaThreshold(frame, lower_bound_green, upper_bound_green, 1000);
+        auto Foot_Exis = Is_AreaThreshold(frame, lower_bound_green, upper_bound_green, 1000);
+
+        bool is_Green = std::get<0>(Green_Exis);
+        cv::Point Bottom_Green = std::get<2>(Green_Exis);
+        double Green_Angle = std::get<5>(Green_Exis);
+
+        cv::Point Top_Foot = std::get<2>(Foot_Exis);
+
+        int Distance_Green_Foot = Top_Foot.y - Bottom_Green.y;
+        Set_contain_adjust_to_foot(Distance_Green_Foot);
+
+        this->Set_img_proc_Adjust_det(is_Green);
 
         if (cv::waitKey(1) == 27)
             break;
@@ -95,80 +163,94 @@ void Img_proc::webcam_thread()
 
 // // ********************************************** 3D THREAD************************************************** //
 
-std::tuple<cv::Mat, double, cv::Point> Img_proc::Hoop_Detect(cv::Mat color, cv::Mat depth, rs2::depth_frame depth_frame)
+std::tuple<cv::Mat, cv::Point2f> Img_proc::Hoop_Detect(cv::Mat color, cv::Mat depth, cv::Mat depth_dist, int threshold_value)
 {
-    cv::Mat gray, thresh, extracted_object;
+    cv::Mat mask = depth_dist < 1000;
 
-    double distance_hoop = 0;
+    cv::Mat output;
+    color.copyTo(output, mask);
 
-    cv::cvtColor(depth, gray, cv::COLOR_BGR2GRAY);
-    int pos = cv::getTrackbarPos("pos", "Distance Measurement");
-    cv::threshold(gray, thresh, pos, 255, cv::THRESH_BINARY);
+    cv::Mat inverse_mask = depth_dist >= 1000;
+    output.setTo(cv::Scalar(255, 255, 255), inverse_mask);
 
-    extracted_object = cv::Mat::zeros(color.size(), color.type());
+    cv::Rect roi(0, 100, output.cols, 200);
+
+    output.rowRange(0, 100).setTo(cv::Scalar(255, 255, 255));
+    output.rowRange(300, output.rows).setTo(cv::Scalar(255, 255, 255));
+
+    cv::Mat red_mask, hsv;
+    cv::cvtColor(output, hsv, cv::COLOR_BGR2HSV);
+    cv::inRange(hsv, cv::Scalar(160, 120, 100), cv::Scalar(179, 255, 255), red_mask);
 
     std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(thresh, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    cv::findContours(red_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    double max_area = 0;
-    cv::Point center;
-    std::vector<cv::Point> largest_contour;
+    cv::drawContours(output, contours, -1, cv::Scalar(0, 0, 255), 2);
 
-    for (const auto &contour : contours)
+    cv::Point2f black_center;
+
+    cv::Mat grayscale;
+    cv::cvtColor(output(roi), grayscale, cv::COLOR_BGR2GRAY);
+
+    cv::Mat binary;
+    cv::threshold(grayscale, binary, threshold_value, 255, cv::THRESH_BINARY_INV);
+
+    std::vector<std::vector<cv::Point>> black_contours;
+    cv::findContours(binary, black_contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    if (!black_contours.empty())
     {
-        double area = contourArea(contour);
-        if (area > max_area)
+        std::sort(black_contours.begin(), black_contours.end(), [](const std::vector<cv::Point>& c1, const std::vector<cv::Point>& c2){
+            return cv::contourArea(c1, false) > cv::contourArea(c2, false);
+        });
+
+        cv::drawContours(output, black_contours, 0, cv::Scalar(255, 0, 0), 2, 8, cv::noArray(), INT_MAX, roi.tl());
+
+        cv::Moments moments = cv::moments(black_contours[0]);
+        if (moments.m00 != 0)
         {
-            max_area = area;
-            largest_contour = contour;
+            black_center = cv::Point2f(moments.m10/moments.m00, moments.m01/moments.m00);
+            black_center += cv::Point2f(static_cast<float>(roi.x), static_cast<float>(roi.y));
+            cv::circle(output, black_center, 5, cv::Scalar(0, 0, 255), -1);
         }
     }
 
-    if (!largest_contour.empty() && max_area > 500)
-    {
-        cv::Moments m = cv::moments(largest_contour);
-        if (m.m00 != 0)
-        {
-            center = cv::Point(m.m10 / m.m00, m.m01 / m.m00);
-            cv::Mat singleContourMask = cv::Mat::zeros(thresh.size(), thresh.type());
-            cv::drawContours(singleContourMask, std::vector<std::vector<cv::Point>>{largest_contour}, -1, cv::Scalar(255), cv::FILLED);
+    //cv::line(output, cv::Point(0, 100), cv::Point(640, 100), red_color, 3);
+    //cv::line(output, cv::Point(0, 300), cv::Point(640, 300), red_color, 3);
 
-            cv::Mat singleExtractedObject;
-            color.copyTo(singleExtractedObject, singleContourMask);
-            singleExtractedObject.copyTo(extracted_object, singleContourMask);
-
-            cv::circle(extracted_object, center, 1, cv::Scalar(0, 255, 0), 2);
-            distance_hoop = depth_frame.get_distance(center.x, center.y);
-            putText(extracted_object, "Distance: " + std::to_string(distance_hoop), cv::Point(10, 25), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
-        }
-    }
-    cv::cvtColor(depth, gray, cv::COLOR_BGR2GRAY);
-    int pos2 = cv::getTrackbarPos("pos", "Distance Measurement");
-    cv::threshold(gray, thresh, pos, 255, cv::THRESH_BINARY);
-
-    return std::make_tuple(extracted_object, distance_hoop, center);
+    return std::make_tuple(output, black_center);
 }
+
 
 int Img_proc::Hoop_Location(cv::Mat &color, cv::Point center)
 {
-    int x_left_bound = 424;
-    int x_right_bound = 500;
+    int x_left_bound = IMG_W - ADJUST_X_MARGIN;
+    int x_right_bound = IMG_W + ADJUST_X_MARGIN;
     int y_top_bound = 10;
     int y_bottom_bound = 470;
 
+    int x_pixel_toShoot = 0;
+
     rectangle(color, cv::Point(x_left_bound, y_top_bound), cv::Point(x_right_bound, y_bottom_bound), cv::Scalar(255, 255, 0), 2);
 
-    if (center.x >= x_left_bound && center.x <= x_right_bound &&
-        center.y >= y_top_bound && center.y <= y_bottom_bound)
+    if (center.x < x_left_bound)
     {
-        putText(color, "Inside", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
-        return 1; // center가 영역 안에 있음을 나타내는 값 반환
+        putText(color, "Left", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
+        x_pixel_toShoot = 1;
     }
+    else if(center.x > x_right_bound)
+    {
+        putText(color, "Right", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
+        x_pixel_toShoot = -1;
+    }
+
     else
     {
-        putText(color, "Outside", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
-        return 0; // center가 영역 밖에 있음을 나타내는 값 반환
+        putText(color, "Inside", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
+        x_pixel_toShoot = 0;
     }
+
+    return x_pixel_toShoot;
 }
 
 void Img_proc::realsense_thread()
@@ -176,8 +258,8 @@ void Img_proc::realsense_thread()
     rs2::colorizer color_map;
     rs2::pipeline pipe;
     rs2::config cfg;
-    cfg.enable_stream(RS2_STREAM_COLOR, realsense_width, realsense_height, RS2_FORMAT_BGR8, realsense_fps);
-    cfg.enable_stream(RS2_STREAM_DEPTH, realsense_width, realsense_height, RS2_FORMAT_Z16, realsense_fps);
+    cfg.enable_stream(RS2_STREAM_COLOR, realsense_width, realsense_height, RS2_FORMAT_BGR8, 30);
+    cfg.enable_stream(RS2_STREAM_DEPTH, realsense_width, realsense_height, RS2_FORMAT_Z16, 30);
 
     try
     {
@@ -189,21 +271,34 @@ void Img_proc::realsense_thread()
         return;
     }
 
-    const auto window_name = "Realsense Depth Frame";
+    const auto window_name = "Distance Measurement";
     cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);
 
-    const auto window_name_color = "Realsense Color Frame";
-    cv::namedWindow(window_name_color, cv::WINDOW_AUTOSIZE);
+    const auto window_name_real_color = "Realsense Color Frame";
+    cv::namedWindow(window_name_real_color, cv::WINDOW_AUTOSIZE);
+
+    create_threshold_trackbar_Black(window_name_real_color);
+
+    create_threshold_trackbar_Black(window_name_real_color);
+
+    rs2::align align_to(RS2_STREAM_COLOR);
+    rs2::spatial_filter spatial;
+    rs2::temporal_filter temporal;
+    rs2::hole_filling_filter hole_filling;
 
     try
     {
         while (ros::ok() && cv::waitKey(1) < 0 && cv::getWindowProperty(window_name, cv::WND_PROP_AUTOSIZE) >= 0)
         {
             rs2::frameset data = pipe.wait_for_frames();
+            data = align_to.process(data);
 
-            rs2::frame depth = data.get_depth_frame().apply_filter(color_map);
-            rs2::frame color = data.get_color_frame();
             rs2::depth_frame depth_frame = data.get_depth_frame();
+
+            depth_frame = hole_filling.process(depth_frame);
+
+            rs2::frame depth = depth_frame;
+            rs2::frame color = data.get_color_frame();
 
             color_map.set_option(RS2_OPTION_COLOR_SCHEME, 2.f);
 
@@ -214,21 +309,27 @@ void Img_proc::realsense_thread()
             const int h = depth.as<rs2::video_frame>().get_height();
 
             cv::Mat colorMat(cv::Size(w, h), CV_8UC3, (void *)color.get_data(), cv::Mat::AUTO_STEP);
-            cv::Mat depthMat(cv::Size(w, h), CV_8UC3, (void *)depth.get_data(), cv::Mat::AUTO_STEP);
+            cv::Mat depthMat(cv::Size(w, h), CV_8UC3, (void *)depth.apply_filter(color_map).get_data(), cv::Mat::AUTO_STEP);
             cv::Mat depth_dist(cv::Size(w, h), CV_16UC1, (void *)depth_frame.get_data(), cv::Mat::AUTO_STEP);
 
             Eigen::Vector3f normal_vector;
 
-            auto Hoop = Hoop_Detect(colorMat, depthMat, depth_frame);
+            auto Hoop = Hoop_Detect(colorMat, depthMat, depth_dist, threshold_value_black);
 
-            colorMat = std::get<0>(Hoop);
+            cv::Mat Hoop_extract = std::get<0>(Hoop);
+            cv::Point2f Hoop_center = std::get<1>(Hoop);
 
-            double distance_ = std::get<1>(Hoop);
+            int hoop_center_error = Hoop_Location(Hoop_extract, Hoop_center);
+
+            this->Set_delta_x(hoop_center_error);
 
             this->Set_distance(distance_);
 
             cv::imshow(window_name, depthMat);
-            cv::imshow(window_name_color, colorMat);
+            cv::imshow(window_name_real_color, Hoop_extract);
+
+            // cv::imshow(window_name, depthMat);
+            // cv::imshow(window_name_color, colorMat);
         }
     }
     catch (const rs2::error &e)
@@ -236,6 +337,7 @@ void Img_proc::realsense_thread()
         std::cerr << "An error occurred during streaming: " << e.what() << std::endl;
     }
 }
+
 
 // ********************************************** GETTERS ************************************************** //
 
@@ -299,7 +401,7 @@ double Img_proc::Get_adjust_angle() const
     return adjust_angle_;
 }
 
-bool Img_proc::Get_contain_adjust_to_foot() const
+int Img_proc::Get_contain_adjust_to_foot() const
 {
     std::lock_guard<std::mutex> lock(mtx_contain_adjust_to_foot);
     return contain_adjust_to_foot_;
@@ -367,9 +469,8 @@ void Img_proc::Set_adjust_angle(double adjust_angle)
     this->adjust_angle_ = adjust_angle;
 }
 
-void Img_proc::Set_contain_adjust_to_foot(bool contain_adjust_to_foot)
+void Img_proc::Set_contain_adjust_to_foot(int contain_adjust_to_foot)
 {
     std::lock_guard<std::mutex> lock(mtx_contain_adjust_to_foot);
     this->contain_adjust_to_foot_ = contain_adjust_to_foot;
 }
-

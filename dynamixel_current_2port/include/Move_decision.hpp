@@ -28,6 +28,8 @@
 #define NOLINE_ANGLE 15
 
 #define ADJUST_TURN 5
+#define ADJUST_Y_MARGIN 50
+
 
 using namespace std;
 
@@ -54,7 +56,9 @@ public:
         Right_6step = 16,
         Shoot = 17,
         Ready_to_throw = 18,
-        Grab = 20,
+        Right_1step = 19,
+        Left_1step = 20,
+        Grab = 30,
         START = 50,
         NONE = 99,
         FINISH = 100,
@@ -90,6 +94,8 @@ public:
     string Str_Forward_Halfstep = "Forward_Halfstep";
     string Str_Left_Halfstep = "Left_Halfstep";
     string Str_Right_Halfstep = "Right_Halfstep";
+    string Str_Left_1step = "Left_1step";
+    string Str_Right_1step = "Right_1step";
     string Str_Back_Halfstep = "Back_Halfstep";
     string Str_Left_6step = "Left_6step";
     string Str_Right_6step = "Right_6step";
@@ -266,7 +272,7 @@ public:
     int8_t tmp_adjust_seq = 0;
     int8_t img_proc_adjust_delta_x = 0;
     int8_t adjust_motion = 0;
-    bool img_proc_contain_adjust_to_foot = false; // huddle Y Point
+    int img_proc_contain_adjust_to_foot = 0; // adjust Y Point
     bool contain_adjust_X = false;                // adjust X Point
     bool contain_adjust_Y = false;                // adjust Y Point
     bool adjust_posture = false;                  // adjust gradient

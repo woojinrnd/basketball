@@ -331,10 +331,9 @@ void Move_Decision::ADJUST_mode()
         // Initializing
         img_proc_adjust_delta_x = img_procPtr->Get_delta_x();
         img_proc_contain_adjust_to_foot = img_procPtr->Get_contain_adjust_to_foot();
-        img_proc_contain_adjust_to_foot = 1;
 
         ROS_ERROR(Str_ADJUST_SEQUENCE_1.c_str());
-        // ROS_WARN("Y diff : %d", img_proc_contain_adjust_to_foot);
+        ROS_WARN("Y diff : %d", img_proc_contain_adjust_to_foot);
 
         if (!Get_select_motion_on_flg())
         {
@@ -367,14 +366,14 @@ void Move_Decision::ADJUST_mode()
             }
 
             // About adjust Y point
-            if (contain_adjust_X && !img_proc_contain_adjust_to_foot)
+            if (contain_adjust_X && img_proc_contain_adjust_to_foot > ADJUST_Y_MARGIN)
             {
                 adjust_motion = Motion_Index::Forward_Halfstep;
                 Set_motion_index_(adjust_motion);
                 Set_select_motion_on_flg(true);
             }
 
-            else if (img_proc_contain_adjust_to_foot)
+            else if (0 < img_proc_contain_adjust_to_foot < ADJUST_Y_MARGIN)
             {
                 contain_adjust_Y = true;
                 ROS_WARN("Y POSITION IS OK!!!!!!!!!!!!!!!!!!!");
@@ -1136,6 +1135,14 @@ void Move_Decision::Motion_Info()
         tmp_motion = Str_Forward_1step;
         break;
 
+    case Motion_Index::Left_1step:
+        tmp_motion = Str_Left_1step;
+        break;
+
+    case Motion_Index::Right_1step:
+        tmp_motion = Str_Right_1step;
+        break;
+
     case Motion_Index::Right_6step:
         tmp_motion = Right_6step;
         break;
@@ -1218,6 +1225,14 @@ void Move_Decision::Send_Motion_Info(int8_t res_motion)
 
     case Motion_Index::Forward_1step:
         tmp_motion = Str_Forward_1step;
+        break;
+
+    case Motion_Index::Left_1step:
+        tmp_motion = Str_Left_1step;
+        break;
+        
+    case Motion_Index::Right_1step:
+        tmp_motion = Str_Right_1step;
         break;
 
     case Motion_Index::Right_6step:

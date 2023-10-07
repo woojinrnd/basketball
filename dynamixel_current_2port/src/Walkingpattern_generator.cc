@@ -2848,6 +2848,110 @@ MatrixXd Trajectory::LF_zsimulation_standup(double h)
 	return Footpos;
 }
 
+MatrixXd Trajectory::RF_zsimulation_sitdown3(double h)
+{
+	XStep = Equation_solver(0, 300, 0, h);
+	RowVectorXd Footpos(500);
+	for (int i = 0; i < 500; i++)
+	{
+		if (i < 100)
+		{
+			Footpos[i] = 0;
+		}
+		else if (i < 400)
+		{
+			Footpos[i] = Step(i - 100);
+		}
+		else if (i < 500)
+		{
+			Footpos[i] = h;
+		}
+		else
+		{
+			Footpos[i] = h;
+		}
+	};
+	return Footpos;
+}
+
+MatrixXd Trajectory::LF_zsimulation_sitdown3(double h)
+{
+	XStep = Equation_solver(0, 300, 0, h);
+	RowVectorXd Footpos(500);
+	for (int i = 0; i < 500; i++)
+	{
+		if (i < 100)
+		{
+			Footpos[i] = 0;
+		}
+		else if (i < 400)
+		{
+			Footpos[i] = Step(i - 100);
+		}
+		else if (i < 500)
+		{
+			Footpos[i] = h;
+		}
+		else
+		{
+			Footpos[i] = h;
+		}
+	};
+	return Footpos;
+}
+
+MatrixXd Trajectory::RF_zsimulation_standup3(double h)
+{
+	XStep = Equation_solver(0, 300, h, 0);
+	RowVectorXd Footpos(500);
+	for (int i = 0; i < 500; i++)
+	{
+		if (i < 100)
+		{
+			Footpos[i] = h;
+		}
+		else if (i < 400)
+		{
+			Footpos[i] = Step(i - 100);
+		}
+		else if (i < 500)
+		{
+			Footpos[i] = 0;
+		}
+		else
+		{
+			Footpos[i] = 0;
+		}
+	};
+	return Footpos;
+}
+
+MatrixXd Trajectory::LF_zsimulation_standup3(double h)
+{
+	XStep = Equation_solver(0, 300, h, 0);
+	RowVectorXd Footpos(500);
+	for (int i = 0; i < 500; i++)
+	{
+		if (i < 100)
+		{
+			Footpos[i] = h;
+		}
+		else if (i < 400)
+		{
+			Footpos[i] = Step(i - 100);
+		}
+		else if (i < 500)
+		{
+			Footpos[i] = 0;
+		}
+		else
+		{
+			Footpos[i] = 0;
+		}
+	};
+	return Footpos;
+}
+
 void Trajectory::Go_Straight(double step, double distance, double height)
 {
 	Set_step(step);
@@ -2918,10 +3022,10 @@ void Trajectory::Side_Right2()
 	Ref_LL_z = LF_zsimulation_rightwalk();
 }
 
-void Trajectory::Side_Left1()
+void Trajectory::Side_Left1(double step)
 {
-	Set_step(0.06);
-	MatrixXd Ycom = YComSimulation_Sidewalk_half(-L0, -L0, 2 * L0, L0);
+	Set_step(step);
+	MatrixXd Ycom = YComSimulation_Sidewalk_half(-L0, -L0, L0 + step, L0 - step);
 	MatrixXd LF_yFoot = LF_ysimulation_leftwalk_halfstep();
 	MatrixXd RF_yFoot = RF_ysimulation_leftwalk_halfstep();
 	Ref_RL_x = MatrixXd::Zero(1, sim_n);
@@ -2932,10 +3036,10 @@ void Trajectory::Side_Left1()
 	Ref_LL_z = LF_zsimulation_leftwalk_halfstep();
 }
 
-void Trajectory::Side_Right1()
+void Trajectory::Side_Right1(double step)
 {
-	Set_step(-0.06);
-	MatrixXd Ycom = YComSimulation_Sidewalk_half(L0, L0, -2 * L0, -L0);
+	Set_step(-step);
+	MatrixXd Ycom = YComSimulation_Sidewalk_half(L0, L0, - L0 - step, -L0 + step);
 	MatrixXd LF_yFoot = LF_ysimulation_rightwalk_halfstep();
 	MatrixXd RF_yFoot = RF_ysimulation_rightwalk_halfstep();
 	Ref_RL_x = MatrixXd::Zero(1, sim_n);
@@ -2973,7 +3077,6 @@ void Trajectory::Side_Right6()
 	Ref_RL_z = RF_zsimulation_rightwalk6();
 	Ref_LL_z = LF_zsimulation_rightwalk6();
 }
-
 
 void Trajectory::Step_in_place(double step, double distance, double height)
 {
@@ -4632,7 +4735,7 @@ void IK_Function::Angle_Compensation_Huddle(int indext)
 	else if (indext > 1.625 * dwalktime + 100 && indext < 1.7 * dwalktime + 100)
 	{
 		LL_th[1] = LL_th[1] + LL_Swing_Leg_Compensation_down(indext - 1.625 * dwalktime - 100);
-		LL_th[5] = LL_th[5] - 1.2*LL_Swing_Leg_Compensation_down(indext - 1.625 * dwalktime - 100);
+		LL_th[5] = LL_th[5] - LL_Swing_Leg_Compensation_down(indext - 1.625 * dwalktime - 100);
 
 		RL_th[1] = RL_th[1] - RL_Support_Leg_Compensation_down(indext - 1.625 * dwalktime - 100);
 		RL_th[3] = RL_th[3] - RL_Support_Knee_Compensation_down(indext - 1.625 * dwalktime - 100);

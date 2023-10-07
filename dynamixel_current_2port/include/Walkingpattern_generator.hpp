@@ -134,6 +134,11 @@ public:
 	MatrixXd RF_zsimulation_standup(double h);
 	MatrixXd LF_zsimulation_standup(double h);
 
+	MatrixXd RF_zsimulation_sitdown3(double h);
+	MatrixXd LF_zsimulation_sitdown3(double h);
+	MatrixXd RF_zsimulation_standup3(double h);
+	MatrixXd LF_zsimulation_standup3(double h);
+
 	void Make_turn_trajectory(double angle);
 	double Return_turn_trajectory(double t);
 	double Return_back_trajectory(double t);
@@ -143,8 +148,8 @@ public:
 	void Side_Right2();
 	void Side_Left6();
 	void Side_Right6();
-	void Side_Left1();
-	void Side_Right1();
+	void Side_Left1(double step);
+	void Side_Right1(double step);
 	void Step_in_place(double step, double distance,double height);
 	void Stop_Trajectory_straightwalk(double step);
 	void Stop_Trajectory_stepinplace(double step);
