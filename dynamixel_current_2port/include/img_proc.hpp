@@ -123,6 +123,7 @@ public:
     double Get_gradient() const;
     double Get_delta_x() const;
     double Get_distance() const;
+    double Get_adjust_angle() const;
 
     // ********************************************** SETTERS ************************************************** //
 
@@ -137,6 +138,7 @@ public:
     void Set_gradient(double gradient);
     void Set_delta_x(double delta_x);
     void Set_distance(double set_distance);
+    void Set_adjust_angle(double adjust_angle);
 
     // ********************************************** running ************************************************** //
 
@@ -157,7 +159,6 @@ public:
     Point point_target = Point(IMG_W / 2, IMG_H);
     std::vector<std::vector<cv::Point>> contours_;
     double delta_x_list[3] = {0.f, 0.f, 0.f};
-    double delta_x_ = 0;
     // cv::Mat final_binary_mask;
     cv::Mat final_binary_mask = cv::Mat::zeros(IMG_H, IMG_W, CV_8UC1);
 
@@ -170,7 +171,7 @@ private:
     int h_min, h_max, s_min, s_max, v_min, v_max;
     int l_min, l_max, a_min, a_max, b_min, b_max;
 
-    // LINE Determine flg from img_proc
+    // Determine flg from img_proc
     bool img_proc_far_hoop_det_ = false;
     bool img_proc_adjust_det_ = false;
     bool img_proc_shoot_det_ = false;
@@ -178,7 +179,7 @@ private:
     bool img_proc_stop_det_ = false;
     int8_t img_proc_adjust_number_ = 0;
 
-    // Line mode
+    // Hoop mode
     double gradient_ = 0; // Line_angle
     double distance_ = 0; // huddle / wall mode
 
@@ -186,6 +187,10 @@ private:
     // delta_x : Center of window.x - Center of last captured line.x
     // delta_x > 0 : LEFT
     // delta_x < 0 : RIGHT
+    double delta_x_ = 0;
+
+    //Adjust mode
+    double adjust_angle_ = 0;
 
     /////////////////////////////////////////// Mutex ///////////////////////////////////////////
     // LINE Determine flg from img_proc
@@ -196,10 +201,11 @@ private:
     mutable std::mutex mtx_img_proc_stop_det_;
     mutable std::mutex mtx_img_proc_adjust_number_;
 
-    // Line Mode
+    // Far_Hoop Mode
     mutable std::mutex mtx_gradient;
-    // No Line Mode
-    mutable std::mutex mtx_delta_x;
-    // Wall Mode
     mutable std::mutex mtx_distance;
+    // No Hoop Mode
+    mutable std::mutex mtx_delta_x;
+    //Adjust Mode
+    mutable std::mutex mtx_adjust_angle;
 };

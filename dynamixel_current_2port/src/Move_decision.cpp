@@ -18,7 +18,7 @@ Move_Decision::Move_Decision(Img_proc *img_procPtr)
     boost::thread process_thread = boost::thread(boost::bind(&Move_Decision::processThread, this));
     boost::thread queue_thread = boost::thread(boost::bind(&Move_Decision::callbackThread, this));
     boost::thread web_process_thread = boost::thread(boost::bind(&Img_proc::webcam_thread, img_procPtr));
-    // boost::thread depth_process_thread = boost::thread(boost::bind(&Img_proc::realsense_thread, img_procPtr));
+    boost::thread depth_process_thread = boost::thread(boost::bind(&Img_proc::realsense_thread, img_procPtr));
 }
 
 Move_Decision::~Move_Decision()
@@ -31,7 +31,6 @@ void Move_Decision::process()
 {
     tmp_img_proc_far_hoop_flg_ = img_procPtr->Get_img_proc_Far_Hoop_det();
     tmp_img_proc_adjust_flg_ = img_procPtr->Get_img_proc_Adjust_det();
-    tmp_img_proc_shoot_flg_ = img_procPtr->Get_img_proc_Shoot_det();
     tmp_img_proc_no_hoop_flg_ = img_procPtr->Get_img_proc_No_Hoop_det();
 
     //////////////////////////////////////   FAR HOOP MODE    //////////////////////////////////////
@@ -43,59 +42,12 @@ void Move_Decision::process()
             Set_Adjust_flg(true);
             Set_Far_Hoop_flg(false);
             Set_No_Hoop_flg(false);
-            Set_Shoot_flg(false);
-        }
-        else if (tmp_img_proc_no_hoop_flg_)
-        {
-            Set_Adjust_flg(true);
-            Set_Far_Hoop_flg(false);
-            Set_No_Hoop_flg(false);
-            Set_Shoot_flg(false);
-        }
-    }
-
-    //////////////////////////////////////   ADJUST MODE    //////////////////////////////////////
-
-    else if (tmp_img_proc_adjust_flg_)
-    {
-        if (tmp_img_proc_shoot_flg_)
-        {
-            Set_Adjust_flg(true);
-            Set_Far_Hoop_flg(false);
-            Set_No_Hoop_flg(false);
-            Set_Shoot_flg(false);
-        }
-        else if (tmp_img_proc_far_hoop_flg_)
-        {
-            Set_Adjust_flg(true);
-            Set_Far_Hoop_flg(false);
-            Set_No_Hoop_flg(false);
-            Set_Shoot_flg(false);
         }
         else
         {
-            Set_No_Hoop_flg(false);
-        }
-    }
-
-    //////////////////////////////////////   SHOOT MODE    //////////////////////////////////////
-
-    else if (tmp_img_proc_shoot_flg_)
-    {
-        if (tmp_img_proc_no_hoop_flg_)
-        {
-            Set_No_Hoop_flg(false);
-            Set_Shoot_flg(true);
-        }
-        else if (tmp_img_proc_adjust_flg_)
-        {
-            Set_No_Hoop_flg(false);
+            Set_Far_Hoop_flg(true);
             Set_Adjust_flg(false);
-            Set_Shoot_flg(true);
-        }
-        else
-        {
-            Set_Shoot_flg(true);
+            Set_No_Hoop_flg(false);
         }
     }
 
@@ -103,6 +55,45 @@ void Move_Decision::process()
 
     else if (tmp_img_proc_no_hoop_flg_)
     {
+        if (tmp_img_proc_adjust_flg_)
+        {
+            Set_Adjust_flg(false);
+            Set_Far_Hoop_flg(false);
+            Set_No_Hoop_flg(true);
+        }
+
+        else
+        {
+            Set_No_Hoop_flg(true);
+            Set_Far_Hoop_flg(false);
+            Set_Adjust_flg(false);
+        }
+    }
+
+    //////////////////////////////////////   ADJUST MODE    //////////////////////////////////////
+
+    else if (tmp_img_proc_adjust_flg_)
+    {
+        if (tmp_img_proc_far_hoop_flg_)
+        {
+            Set_Adjust_flg(true);
+            Set_Far_Hoop_flg(false);
+            Set_No_Hoop_flg(false);
+        }
+
+        else if (tmp_img_proc_no_hoop_flg_)
+        {
+            Set_Adjust_flg(false);
+            Set_Far_Hoop_flg(false);
+            Set_No_Hoop_flg(true);
+        }
+
+        else
+        {
+            Set_Adjust_flg(true);
+            Set_Far_Hoop_flg(false);
+            Set_No_Hoop_flg(false);
+        }
     }
 }
 
@@ -114,18 +105,17 @@ void Move_Decision::processThread()
     // node loop
     while (ros::ok())
     {
-        ROS_INFO("\n");
-        ROS_INFO("-------------------------PROCESSTHREAD----------------------------");
+        // ROS_INFO("\n");
+        // ROS_INFO("-------------------------PROCESSTHREAD----------------------------");
         process();
-        Running_Info();
-        Motion_Info();
-        // ProccessThread(gradient) = callbackThread(turn_angle)
-        ROS_INFO("Gradient : %f", img_procPtr->Get_gradient());
-        ROS_INFO("delta_x : %f", img_procPtr->Get_delta_x());
-        ROS_INFO("distance : %f", img_procPtr->Get_distance());
+        // Running_Info();
+        // Motion_Info();
+        // ROS_INFO("Gradient : %f", img_procPtr->Get_gradient());
+        // ROS_INFO("delta_x : %f", img_procPtr->Get_delta_x());
+        // ROS_INFO("distance : %f", img_procPtr->Get_distance());
         // ROS_INFO("Move_decision img_proc_line_det : %d", img_procPtr->Get_img_proc_line_det());
-        ROS_INFO("-------------------------PROCESSTHREAD----------------------------");
-        ROS_INFO("\n");
+        // ROS_INFO("-------------------------PROCESSTHREAD----------------------------");
+        // ROS_INFO("\n");
         // relax to fit output rate
         loop_rate.sleep();
     }
@@ -142,19 +132,15 @@ void Move_Decision::Running_Mode_Decision()
 
     else if (running_mode_ != WAKEUP_MODE)
     {
-        if (far_hoop_flg_) // goal_line_detect_flg is true: goal_line detection mode
+        if (Get_Far_Hoop_flg()) // goal_line_detect_flg is true: goal_line detection mode
         {
             running_mode_ = FAR_HOOP_MODE;
         }
-        else if (adjust_flg_)
+        else if (Get_Adjust_flg())
         {
             running_mode_ = ADJUST_MODE;
         }
-        else if (shoot_flg_)
-        {
-            running_mode_ = SHOOT_MODE;
-        }
-        else if (no_hoop_flg_)
+        else if (Get_No_Hoop_flg())
         {
             running_mode_ = NO_HOOP_MODE;
         }
@@ -174,15 +160,11 @@ void Move_Decision::Running_Mode_Decision()
     case WAKEUP_MODE:
         WAKEUP_mode();
         break;
-    case SHOOT_MODE:
-        SHOOT_mode();
-        break;
     case NO_HOOP_MODE:
         NO_HOOP_mode();
         break;
     }
 }
-
 
 void Move_Decision::FAR_HOOP_mode()
 {
@@ -190,93 +172,286 @@ void Move_Decision::FAR_HOOP_mode()
     DistanceDecision(hoop_distance);
     far_hoop_motion = Get_motion_index_();
 
-    if (!Get_select_motion_on_flg() && Get_SM_req_finish() && robot_forward == true)
+    if (!Get_select_motion_on_flg())
     {
-        far_hoop_motion = Motion_Index::Forward_4step;
-        Set_select_motion_on_flg(true);
-        Set_motion_index_(far_hoop_motion);
-    }
-
-    else if (!Get_select_motion_on_flg() && Get_SM_req_finish() && robot_forward == false)
-    {
-        far_hoop_motion = Motion_Index::InitPose;
+        far_hoop_motion = Motion_Index::Forward_2step;
         Set_select_motion_on_flg(true);
         Set_motion_index_(far_hoop_motion);
     }
 }
 
-void Move_Decision::ADJUST_mode()
+void Move_Decision::NO_HOOP_mode()
 {
-    hoop_distance = img_procPtr->Get_distance();
-    DistanceDecision(hoop_distance);
-    img_adjust_number_case = img_procPtr->Get_img_proc_Adjust_number();
+    // Counter Clock wise(+) (Turn Angle sign)
+    // delta_x > 0 : LEFT Window  ->  Left turn (-)
+    // delta_x < 0 : RIGHT window ->  Right turn  (+)
+    tmp_delta_x = img_procPtr->Get_delta_x();
+    nohoop_actual_angle = Get_turn_angle_();
+    nohoop_motion = Get_motion_index_();
 
-    switch (img_adjust_number_case)
+    if (tmp_delta_x < 0) // Right
     {
-    case 1:
-        // 시계반대방향 회전 (+)
-        if (!Get_select_motion_on_flg() && Get_SM_req_finish())
+        if (!Get_turn_angle_on_flg())
         {
-            Set_motion_index_(Motion_Index::Forward_Nstep);
-            Set_select_motion_on_flg(true);
-            Set_Adjust_flg(false);
-        }
-        if (!Get_turn_angle_on_flg() && Get_TA_req_finish())
-        {
-            Set_turn_angle_(10);
+            nohoop_actual_angle -= 3;
+            if (nohoop_actual_angle < -NOLINE_ANGLE)
+            {
+                nohoop_actual_angle = -NOLINE_ANGLE;
+            }
+            Set_turn_angle_(nohoop_actual_angle);
             Set_turn_angle_on_flg(true);
         }
-        break;
 
-    case 2:
-        // 시계방향 회전
-        if (!Get_select_motion_on_flg() && Get_SM_req_finish())
+        if (!Get_select_motion_on_flg())
         {
-            Set_motion_index_(Motion_Index::Forward_Nstep);
+            Set_motion_index_(Motion_Index::Step_in_place);
             Set_select_motion_on_flg(true);
-            Set_Adjust_flg(false);
         }
-        break;
 
-    case 3:
-        // 전진
-        if (!Get_select_motion_on_flg() && Get_SM_req_finish())
-        {
-            Set_motion_index_(Motion_Index::Forward_Nstep);
-            Set_select_motion_on_flg(true);
-            Set_Adjust_flg(false);
-        }
-        break;
-
-    case 4:
-        // 후진
-        if (!Get_select_motion_on_flg() && Get_SM_req_finish())
-        {
-            Set_motion_index_(Motion_Index::Forward_Nstep);
-            Set_select_motion_on_flg(true);
-            Set_Adjust_flg(false);
-        }
-        break;
-
-    case 5:
-        // 시계방향 회전
-        if (!Get_select_motion_on_flg() && Get_SM_req_finish())
-        {
-            Set_motion_index_(Motion_Index::Forward_Nstep);
-            Set_select_motion_on_flg(true);
-            Set_Adjust_flg(false);
-        }
-        if (img_procPtr->Get_img_proc_Shoot_det())
-        {
-            Set_Shoot_flg(true);
-        }
-        break;
-
-    default:
-        Set_motion_index_(Motion_Index::InitPose);
-        break;
+        ROS_WARN("RIGHT TURN");
+        // ROS_INFO("turn angle : %d", Get_turn_angle_());
     }
-    Set_Adjust_flg(false);
+
+    else if (tmp_delta_x > 0) // LEFT
+    {
+        if (!Get_turn_angle_on_flg())
+        {
+            nohoop_actual_angle += 3;
+            if (nohoop_actual_angle > NOLINE_ANGLE)
+            {
+                nohoop_actual_angle = NOLINE_ANGLE;
+            }
+            Set_turn_angle_(nohoop_actual_angle);
+            Set_turn_angle_on_flg(true);
+        }
+
+        if (!Get_select_motion_on_flg())
+        {
+            Set_motion_index_(Motion_Index::Step_in_place);
+            Set_select_motion_on_flg(true);
+        }
+
+        ROS_WARN("LEFT_TURN");
+    }
+}
+
+void Move_Decision::ADJUST_mode()
+{
+    // 0 : Pose Control (Posture(Gradient))
+    // --> Motion : Motion_Index::Step_In_Place && Turn Angle(Gradient)
+
+    // 1 : Approach to the Line
+    // --> Motion : Motion_Index::Left_Halfstep or Motion_Index::Right_Halfstep : About X diff
+    // --> Motion : Motion_Index::Forward_Halfstep (Until Line center) : About Y diff
+
+    // 2 : Motion : Ready_to_throw
+    // --> Motion : Motion_Index::Step_In_Place && Turn Angle(Gradient)
+
+    // 3 : Pose Control (Posture(Gradient))
+    // --> Motion : Motion_Index::Step_In_Place && Turn Angle(Gradient)
+
+    // 4 : Motion : Shoot
+
+    // 5 : Initializing
+
+    adjust_actual_angle = Get_turn_angle_();
+    adjust_motion = Motion_Index::InitPose;
+
+    // // 0 : Approach to the adjust + Pose Control (Posture(Gradient))
+    if (tmp_adjust_seq == 0)
+    {
+        img_proc_adjust_angle = img_procPtr->Get_adjust_angle();
+        ROS_ERROR("img_proc_adjust_angle : %lf", img_proc_adjust_angle);
+        ROS_ERROR(Str_ADJUST_SEQUENCE_0.c_str());
+
+        if (!Get_select_motion_on_flg())
+        {
+            adjust_motion = Motion_Index::Step_in_place;
+            Set_motion_index_(adjust_motion);
+            Set_select_motion_on_flg(true);
+        }
+
+        if (!Get_turn_angle_on_flg())
+        {
+            if (img_proc_adjust_angle > 10 || img_proc_adjust_angle < -10)
+            {
+                if (img_proc_adjust_angle >= 15)
+                {
+                    adjust_actual_angle = ADJUST_TURN;
+                }
+                else if (img_proc_adjust_angle <= -15)
+                {
+                    adjust_actual_angle = -ADJUST_TURN;
+                }
+                Set_turn_angle_(adjust_actual_angle);
+                Set_turn_angle_on_flg(true);
+            }
+            else
+            {
+                adjust_posture = true;
+            }
+        }
+
+        if (adjust_posture == true)
+        {
+            tmp_adjust_seq++;
+            adjust_posture = false;
+        }
+    }
+
+    // 1 : Approach to the adjust + Pose Control (Position)
+    else if (tmp_adjust_seq == 1)
+    {
+        // Initializing
+        img_proc_adjust_delta_x = img_procPtr->Get_delta_x();
+        // img_proc_contain_adjust_to_foot = img_procPtr->Get_contain_adjust_to_foot();
+
+        ROS_ERROR(Str_ADJUST_SEQUENCE_1.c_str());
+        ROS_WARN("X diff : %d", img_proc_adjust_delta_x);
+        // ROS_WARN("Y diff : %d", img_proc_contain_adjust_to_foot);
+
+        if (!Get_select_motion_on_flg())
+        {
+            // adjust center X point
+            if (img_proc_adjust_delta_x < 0)
+            {
+                adjust_motion = Motion_Index::Right_Halfstep;
+                Set_motion_index_(adjust_motion);
+                Set_select_motion_on_flg(true);
+                contain_adjust_X = false;
+            }
+
+            else if (img_proc_adjust_delta_x > 0)
+            {
+                adjust_motion = Motion_Index::Left_Halfstep;
+                Set_motion_index_(adjust_motion);
+                Set_select_motion_on_flg(true);
+                contain_adjust_X = false;
+            }
+
+            // About adjust X point
+            else if (img_proc_adjust_delta_x == 0)
+            {
+                ROS_WARN("X diff : %d", img_proc_adjust_delta_x);
+                adjust_motion = Motion_Index::InitPose;
+                Set_motion_index_(adjust_motion);
+                Set_select_motion_on_flg(true);
+                contain_adjust_X = true;
+                ROS_WARN("X POSITION IS OK!!!!!!!!!!!!!!!!!!!");
+            }
+
+            // About adjust Y point
+            if (contain_adjust_X && !img_proc_contain_adjust_to_foot)
+            {
+                adjust_motion = Motion_Index::Forward_Halfstep;
+                Set_motion_index_(adjust_motion);
+                Set_select_motion_on_flg(true);
+            }
+
+            else if (img_proc_contain_adjust_to_foot)
+            {
+                contain_adjust_Y = true;
+                ROS_WARN("Y POSITION IS OK!!!!!!!!!!!!!!!!!!!");
+            }
+
+            if (contain_adjust_Y && contain_adjust_X)
+            {
+                adjust_motion = Motion_Index::InitPose;
+                Set_motion_index_(adjust_motion);
+                Set_select_motion_on_flg(true);
+
+                // Sequence++
+                if (finish_past != Get_SM_req_finish())
+                {
+                    contain_adjust_X = false;
+                    contain_adjust_Y = false;
+                    tmp_adjust_seq++;
+                }
+            }
+        }
+    }
+
+    // 2 : Motion : Ready_to_throw
+    else if (tmp_adjust_seq == 2)
+    {
+        ROS_ERROR(Str_ADJUST_SEQUENCE_2.c_str());
+        if (!Get_select_motion_on_flg())
+        {
+            adjust_motion = Motion_Index::Ready_to_throw;
+            Set_motion_index_(adjust_motion);
+            Set_select_motion_on_flg(true);
+        }
+        // Sequence++
+        if (finish_past != Get_SM_req_finish())
+        {
+            tmp_adjust_seq++;
+        }
+    }
+
+    // 3 : Approach to the adjust + Pose Control (Posture(Gradient))
+    else if (tmp_adjust_seq == 3)
+    {
+        img_proc_adjust_angle = img_procPtr->Get_adjust_angle();
+        ROS_ERROR("img_proc_adjust_angle : %lf", img_proc_adjust_angle);
+        ROS_ERROR(Str_ADJUST_SEQUENCE_3.c_str());
+
+        if (!Get_select_motion_on_flg())
+        {
+            adjust_motion = Motion_Index::Step_in_place;
+            Set_motion_index_(adjust_motion);
+            Set_select_motion_on_flg(true);
+        }
+
+        if (!Get_turn_angle_on_flg())
+        {
+            if (img_proc_adjust_angle > 10 || img_proc_adjust_angle < -10)
+            {
+                if (img_proc_adjust_angle >= 15)
+                {
+                    adjust_actual_angle = ADJUST_TURN;
+                }
+                else if (img_proc_adjust_angle <= -15)
+                {
+                    adjust_actual_angle = -ADJUST_TURN;
+                }
+                Set_turn_angle_(adjust_actual_angle);
+                Set_turn_angle_on_flg(true);
+            }
+            else
+            {
+                adjust_posture = true;
+            }
+        }
+
+        if (adjust_posture == true)
+        {
+            tmp_adjust_seq++;
+            adjust_posture = false;
+        }
+    }
+
+    // 4 : Motion : Shoot
+    else if (tmp_adjust_seq == 4)
+    {
+        ROS_ERROR(Str_ADJUST_SEQUENCE_4.c_str());
+        if (!Get_select_motion_on_flg())
+        {
+            adjust_motion = Motion_Index::Shoot;
+            Set_motion_index_(adjust_motion);
+            Set_select_motion_on_flg(true);
+        }
+        if (adjust_posture == true)
+        {
+            tmp_adjust_seq++;
+        }
+    }
+
+    // 5 : Initializing
+    else if (tmp_adjust_seq == 5)
+    {
+        ROS_ERROR(Str_ADJUST_SEQUENCE_5.c_str());
+        tmp_adjust_seq = 0;
+    }
 }
 
 void Move_Decision::STOP_mode()
@@ -351,7 +526,7 @@ void Move_Decision::WAKEUP_mode()
 
     else if (WakeUp_seq == 4)
     {
-        wakeup_running = Running_Mode::FAR_HOOP_MODE;
+        wakeup_running = Get_running_mode_();
         Set_running_mode_(wakeup_running);
         WakeUp_seq = 0;
     }
@@ -359,83 +534,34 @@ void Move_Decision::WAKEUP_mode()
     // Motion_Info();
 }
 
-void Move_Decision::SHOOT_mode()
-{
-    if (!Get_select_motion_on_flg() && Get_SM_req_finish())
-    {
-        Set_motion_index_(Motion_Index::Shoot);
-        Set_select_motion_on_flg(true);
-    }
-}
-
-void Move_Decision::NO_HOOP_mode()
-{
-    tmp_delta_x = img_procPtr->Get_delta_x();
-
-    if (tmp_delta_x < 0) // Right
-    {
-        if (!Get_select_motion_on_flg() && Get_SM_req_finish())
-        {
-            Set_motion_index_(Motion_Index::Step_in_place);
-            Set_select_motion_on_flg(true);
-        }
-        if (!Get_turn_angle_on_flg() && Get_TA_req_finish())
-        {
-            Set_turn_angle_(10);
-            Set_turn_angle_on_flg(true);
-        }
-    }
-
-    else if (tmp_delta_x > 0) // LEFT
-    {
-        if (!Get_select_motion_on_flg() && Get_SM_req_finish())
-        {
-            Set_motion_index_(Motion_Index::Step_in_place);
-            Set_select_motion_on_flg(true);
-        }
-        
-        if (!Get_turn_angle_on_flg() && Get_TA_req_finish())
-        {
-            Set_turn_angle_(10);
-            Set_turn_angle_on_flg(true);
-        }
-    }
-}
-
 void Move_Decision::callbackThread()
 {
     ros::NodeHandle nh(ros::this_node::getName());
 
-    // Subscriber & Publisher
+    // Subscriber
     // IMU_sensor_x_subscriber_ = nh.subscribe("/Angle/x", 1000, &Move_Decision::IMUsensorCallback, this);
     IMU_sensor_y_subscriber_ = nh.subscribe("/Angle/y", 1000, &Move_Decision::IMUsensorCallback, this);
     // IMU_sensor_z_subscriber_ = nh.subscribe("/Angle/z", 1000, &Move_Decision::IMUsensorCallback, this);
 
-
     // Server
-    // motion_index_server_ = nh.advertiseService("Select_Motion", &Move_Decision::playMotion, this);
-    // turn_angle_server_ = nh.advertiseService("Turn_Angle", &Move_Decision::turn_angle, this);
-    // UD_NeckAngle_server_ = nh.advertiseService("UD_NeckAngle", &Move_Decision::Move_UD_NeckAngle, this);
-    // RL_NeckAngle_server_ = nh.advertiseService("RL_NeckAngle", &Move_Decision::Move_RL_NeckAngle, this);
-    // Emergency_server_ = nh.advertiseService("Emergency", &Move_Decision::Emergency, this);
     SendMotion_server_ = nh.advertiseService("SendMotion", &Move_Decision::SendMotion, this);
 
     ros::Rate loop_rate(SPIN_RATE);
     startMode();
     while (nh.ok())
     {
-        ROS_INFO("-------------------------CALLBACKTHREAD----------------------------");
-        ROS_INFO("-------------------------------------------------------------------");
+        // ROS_INFO("-------------------------CALLBACKTHREAD----------------------------");
+        // ROS_INFO("-------------------------------------------------------------------");
         Running_Mode_Decision();
         Running_Info();
         Motion_Info();
-        ROS_INFO("angle : %f", Get_turn_angle_());
-        ROS_INFO("RL_Neck : %f", Get_RL_NeckAngle());
-        ROS_INFO("UD_Neck : %f", Get_UD_NeckAngle());
-        ROS_INFO("Distance : %f", img_procPtr->Get_distance());
-        ROS_INFO("EMG : %s", Get_Emergency_() ? "true" : "false");
-        ROS_INFO("-------------------------------------------------------------------");
-        ROS_INFO("-------------------------CALLBACKTHREAD----------------------------");
+        // ROS_INFO("angle : %f", Get_turn_angle_());
+        // ROS_INFO("RL_Neck : %f", Get_RL_NeckAngle());
+        // ROS_INFO("UD_Neck : %f", Get_UD_NeckAngle());
+        // ROS_INFO("Distance : %f", img_procPtr->Get_distance());
+        // ROS_INFO("EMG : %s", Get_Emergency_() ? "true" : "false");
+        // ROS_INFO("-------------------------------------------------------------------");
+        // ROS_INFO("-------------------------CALLBACKTHREAD----------------------------");
 
         ros::spinOnce();
         loop_rate.sleep();
@@ -482,12 +608,50 @@ bool Move_Decision::SendMotion(dynamixel_current_2port::SendMotion::Request &req
     double res_RL = Move_RL_NeckAngle();
     bool res_EM = Emergency();
 
-    res.select_motion = std::get<0>(res_SM);
-    res.distance = std::get<1>(res_SM);
-    res.turn_angle = res_TA;
-    res.ud_neckangle = res_UD;
-    res.rl_neckangle = res_RL;
-    res.emergency = res_EM;
+    if (Get_SM_req_finish())
+    {
+        if (std::get<0>(res_SM) == Motion_Index::NONE)
+        {
+            std::get<0>(res_SM) = Get_motion_index_();
+            Set_select_motion_on_flg(false);
+        }
+
+        res.select_motion = std::get<0>(res_SM);
+        res.distance = std::get<1>(res_SM);
+    }
+
+    else if (!Get_SM_req_finish())
+    {
+        res.select_motion = Motion_Index::NONE;
+        Set_select_motion_on_flg(false);
+    }
+
+    ROS_WARN("[MESSAGE] SM Request :   %s ", Get_SM_req_finish() ? "true" : "false");
+    ROS_WARN("[MESSAGE] TA Request :   %s ", Get_TA_req_finish() ? "true" : "false");
+    // ROS_WARN("[MESSAGE] RL Request :   %s ", Get_RL_req_finish() ? "true" : "false");
+    // ROS_ERROR("[MESSAGE] EMG Request :   %s ", Get_EM_req_finish() ? "true" : "false");
+
+    if (Get_TA_req_finish())
+    {
+        res.turn_angle = res_TA;
+    }
+
+    if (Get_UD_req_finish())
+    {
+        res.ud_neckangle = res_UD;
+    }
+
+    if (Get_RL_req_finish())
+    {
+        res.rl_neckangle = res_RL;
+    }
+
+    if (Get_EM_req_finish())
+    {
+        res.emergency = res_EM;
+    }
+
+    Send_Info(res.select_motion, res.turn_angle, res.ud_neckangle, res.rl_neckangle, res.emergency);
 
     res.success = true;
     recordProcessedRequest(request_id);
@@ -497,111 +661,224 @@ bool Move_Decision::SendMotion(dynamixel_current_2port::SendMotion::Request &req
 
 std::tuple<int8_t, double> Move_Decision::playMotion()
 {
-    int8_t res_select_motion = 0;
+    int8_t res_select_motion = 99;
     double res_distance = 0;
-    int8_t total = Get_TA_req_finish() + Get_UD_req_finish() + Get_RL_req_finish() + Get_EM_req_finish();
-    if (Get_SM_req_finish())
+    // int8_t total = Get_TA_req_finish() + Get_UD_req_finish() + Get_RL_req_finish() + Get_EM_req_finish();
+
+    if ((Get_stand_status_() == Stand_Status::Stand) && (Get_select_motion_on_flg() == true) /*&& total <=4*/)
     {
-        if ((Get_stand_status_() == Stand_Status::Stand) && (Get_select_motion_on_flg() == true) /*&& total <=4*/)
+        switch (Get_motion_index_())
         {
-            switch (Get_motion_index_())
+        case Motion_Index::InitPose:
+            res_select_motion = Motion_Index::InitPose;
+            break;
+
+        case Motion_Index::Forward_2step:
+            res_select_motion = Motion_Index::Forward_2step;
+            break;
+
+        case Motion_Index::Left_2step:
+            res_select_motion = Motion_Index::Left_2step;
+            break;
+
+        case Motion_Index::Step_in_place:
+            res_select_motion = Motion_Index::Step_in_place;
+            break;
+
+        case Motion_Index::Right_2step:
+            res_select_motion = Motion_Index::Right_2step;
+            break;
+
+        case Motion_Index::ForWard_fast4step:
+            res_select_motion = Motion_Index::ForWard_fast4step;
+            break;
+
+        case Motion_Index::Forward_Nstep:
+            res_select_motion = Motion_Index::Forward_Nstep;
+            if (Get_distance_on_flg())
             {
-            case Motion_Index::InitPose:
-                res_select_motion = Motion_Index::InitPose;
-                break;
-
-            case Motion_Index::Forward_4step:
-                res_select_motion = Motion_Index::Forward_4step;
-                break;
-
-            case Motion_Index::Left_2step:
-                res_select_motion = Motion_Index::Left_2step;
-                break;
-
-            case Motion_Index::Step_in_place:
-                res_select_motion = Motion_Index::Step_in_place;
-                break;
-
-            case Motion_Index::Right_2step:
-                res_select_motion = Motion_Index::Right_2step;
-                break;
-
-            case Motion_Index::ForWard_fast4step:
-                res_select_motion = Motion_Index::ForWard_fast4step;
-                break;
-
-            case Motion_Index::Forward_Nstep:
-                res_select_motion = Motion_Index::Forward_Nstep;
-                if (Get_distance_on_flg())
-                {
-                    res_distance = Get_distance_();
-                    Set_distance_on_flg(false);
-                }
-                break;
-
-            case Motion_Index::Huddle_Jump:
-                res_select_motion = Motion_Index::Huddle_Jump;
-                break;
-
-                // case Motion_Index::NONE:
-                //     res_select_motion = Motion_Index::NONE;
-                //     break;
-            case Motion_Index::Forward_Halfstep:
-                res_select_motion = Motion_Index::Forward_Halfstep;
-                break;
-
-            case Motion_Index::Right_Halfstep:
-                res_select_motion = Motion_Index::Right_Halfstep;
-                break;
-
-            case Motion_Index::Left_Halfstep:
-                res_select_motion = Motion_Index::Left_Halfstep;
-                break;
-
-            case Motion_Index::Back_Halfstep:
-                res_select_motion = Motion_Index::Back_Halfstep;
-                break;
+                res_distance = Get_distance_();
+                Set_distance_on_flg(false);
             }
+            break;
 
-            Set_select_motion_on_flg(false);
+        case Motion_Index::NONE:
+            res_select_motion = Motion_Index::NONE;
+            break;
+
+        case Motion_Index::Forward_Halfstep:
+            res_select_motion = Motion_Index::Forward_Halfstep;
+            break;
+
+        case Motion_Index::Right_Halfstep:
+            res_select_motion = Motion_Index::Right_Halfstep;
+            break;
+
+        case Motion_Index::Left_Halfstep:
+            res_select_motion = Motion_Index::Left_Halfstep;
+            break;
+
+        case Motion_Index::Back_Halfstep:
+            res_select_motion = Motion_Index::Back_Halfstep;
+            break;
+
+        case Motion_Index::Forward_1step:
+            res_select_motion = Motion_Index::Forward_1step;
+            break;
+
+        case Motion_Index::Shoot:
+            res_select_motion = Motion_Index::Shoot;
+            break;
+
+        default:
+            res_select_motion = Motion_Index::InitPose;
         }
 
-        else if (((Get_stand_status_() == Stand_Status::Fallen_Back)) || (Get_stand_status_() == Stand_Status::Fallen_Forward) && (Get_select_motion_on_flg() == true))
-        {
-            switch (Get_motion_index_())
-            {
-            case Motion_Index::FWD_UP:
-                res_select_motion = Motion_Index::FWD_UP;
-                break;
-
-            case Motion_Index::BWD_UP:
-                res_select_motion = Motion_Index::BWD_UP;
-                break;
-            }
-            Set_select_motion_on_flg(false);
-        }
+        Set_select_motion_on_flg(false);
     }
 
-    else if (!Get_SM_req_finish())
+    else if (((Get_stand_status_() == Stand_Status::Fallen_Back)) || (Get_stand_status_() == Stand_Status::Fallen_Forward) && (Get_select_motion_on_flg() == true))
     {
-        res_select_motion = Motion_Index::NONE;
+        switch (Get_motion_index_())
+        {
+        case Motion_Index::FWD_UP:
+            res_select_motion = Motion_Index::FWD_UP;
+            break;
+
+        case Motion_Index::BWD_UP:
+            res_select_motion = Motion_Index::BWD_UP;
+            break;
+
+        default:
+            res_select_motion = Motion_Index::InitPose;
+        }
+        Set_select_motion_on_flg(false);
     }
 
-    ROS_WARN("[MESSAGE] SM Request :   %s ", Get_SM_req_finish() ? "true" : "false");
-    ROS_INFO("#[MESSAGE] SM Motion :   %d#", res_select_motion);
-    ROS_INFO("#[MESSAGE] SM Distance : %f#", res_distance);
+    // ROS_WARN("[MESSAGE] SM Request :   %s ", Get_SM_req_finish() ? "true" : "false");
+    // ROS_INFO("#[MESSAGE] SM Motion :   %d#", res_select_motion);
+    // ROS_INFO("#[MESSAGE] SM Distance : %f#", res_distance);
 
     return std::make_tuple(res_select_motion, res_distance);
+}
+
+void Move_Decision::Test_service()
+{
+    if (aaaa == 0)
+    {
+        ROS_ERROR("ccc : %d", ccc);
+        ROS_ERROR("aaaa : %d", aaaa);
+        abc++;
+
+        if (ccc == 0 && !Get_select_motion_on_flg() /*  && Get_SM_req_finish() */)
+        {
+            Set_motion_index_(Motion_Index::Step_in_place);
+            Set_select_motion_on_flg(true);
+
+            if (!Get_turn_angle_on_flg())
+            {
+                Set_turn_angle_(10);
+                Set_turn_angle_on_flg(true);
+            }
+
+            // Sequence++
+            if (finish_past != Get_SM_req_finish())
+            {
+                ccc++;
+            }
+        }
+        if (ccc == 1 && !Get_select_motion_on_flg() /*  && Get_SM_req_finish() */)
+        {
+            Set_motion_index_(Motion_Index::Step_in_place);
+            Set_select_motion_on_flg(true);
+            if (!Get_turn_angle_on_flg())
+            {
+                Set_turn_angle_(10);
+                Set_turn_angle_on_flg(true);
+            }
+            // Sequence++
+            if (finish_past != Get_SM_req_finish())
+            {
+                ccc++;
+            }
+        }
+        if (ccc == 2 && !Get_select_motion_on_flg() /*  && Get_SM_req_finish() */)
+        {
+            Set_motion_index_(Motion_Index::Step_in_place);
+            Set_select_motion_on_flg(true);
+            if (!Get_turn_angle_on_flg())
+            {
+                Set_turn_angle_(10);
+                Set_turn_angle_on_flg(true);
+            }
+            // Sequence++
+            if (finish_past != Get_SM_req_finish())
+            {
+                ccc = 0;
+                aaaa++;
+            }
+        }
+
+        ROS_ERROR("Loop NUMBER(%d)", abc);
+    }
+
+    else if (aaaa == 1 && !Get_select_motion_on_flg() /* && Get_SM_req_finish() */)
+    {
+        Set_motion_index_(Motion_Index::Forward_Halfstep);
+        Set_select_motion_on_flg(true);
+
+        // Sequence++
+        if (finish_past != Get_SM_req_finish())
+        {
+            aaaa++;
+        }
+    }
+
+    else if (aaaa == 2 && !Get_select_motion_on_flg() /*  && Get_SM_req_finish() */)
+    {
+        Set_motion_index_(Motion_Index::Left_Halfstep);
+        Set_distance_on_flg(true);
+        // Sequence++
+        if (finish_past != Get_SM_req_finish())
+        {
+            aaaa++;
+        }
+    }
+
+    else if (aaaa == 3 && !Get_select_motion_on_flg() /* && Get_SM_req_finish() */)
+    {
+        Set_motion_index_(Motion_Index::Right_Halfstep);
+        Set_select_motion_on_flg(true);
+        // Sequence++
+        if (finish_past != Get_SM_req_finish())
+        {
+            aaaa++;
+        }
+    }
+
+    else if (aaaa == 4 && !Get_select_motion_on_flg() /* && Get_SM_req_finish() */)
+    {
+        Set_motion_index_(Motion_Index::Right_2step);
+        Set_select_motion_on_flg(true);
+        if (finish_past != Get_SM_req_finish())
+        {
+            aaaa++;
+        }
+    }
+
+    ROS_WARN("---------------------------------------");
+    Motion_Info();
+    ROS_WARN("---------------------------------------");
 }
 
 double Move_Decision::turn_angle()
 {
     double res_turn_angle = 0;
-    if (Get_TA_req_finish())
+
+    if ((Get_stand_status_() == Stand_Status::Stand) && Get_turn_angle_on_flg())
     {
-        if ((Get_stand_status_() == Stand_Status::Stand) && Get_turn_angle_on_flg())
+        if (Get_motion_index_() == Motion_Index::Forward_2step || Get_motion_index_() == Motion_Index::Step_in_place || Get_motion_index_() == Motion_Index::Forward_Nstep)
         {
-            // img_procssing
             res_turn_angle = this->Get_turn_angle_();
             if (res_turn_angle > TURN_MAX)
                 res_turn_angle = TURN_MAX;
@@ -611,31 +888,47 @@ double Move_Decision::turn_angle()
         }
     }
 
-    ROS_WARN("[MESSAGE] TA Request :   %s ", Get_TA_req_finish() ? "true" : "false");
-    ROS_INFO("#[MESSAGE] TA Response : %f#", res_turn_angle);
+    // ROS_WARN("[MESSAGE] TA Request :   %s ", Get_TA_req_finish() ? "true" : "false");
+    // ROS_INFO("#[MESSAGE] TA Response : %f#", res_turn_angle);
 
     return res_turn_angle;
 }
 
 double Move_Decision::Move_UD_NeckAngle()
 {
-    double res_ud_neckangle = 50;
-    if (Get_UD_req_finish())
+
+    double res_ud_neckangle = UD_CENTER;
+    if (Get_running_mode_() == Running_Mode::FAR_HOOP_MODE)
     {
-        if ((Get_stand_status_() == Stand_Status::Stand) && Get_UD_Neck_on_flg())
+        res_ud_neckangle = 20;
+        Set_UD_Neck_on_flg(false);
+    }
+
+    else if (!Get_UD_req_finish())
+    {
+        if (Get_running_mode_() == Running_Mode::FAR_HOOP_MODE)
         {
-            // img_procssing
+            res_ud_neckangle = 20;
+        }
+        else
+        {
             res_ud_neckangle = this->Get_UD_NeckAngle();
-            if (res_ud_neckangle > UD_MAX)
-                res_ud_neckangle = UD_MAX;
-            else if (res_ud_neckangle < UD_MIN)
-                res_ud_neckangle = UD_MIN;
             Set_UD_Neck_on_flg(false);
         }
     }
 
-    ROS_WARN("[MESSAGE] UD Request :   %s ", Get_UD_req_finish() ? "true" : "false");
-    ROS_INFO("#[MESSAGE] UD Response : %f#", res_ud_neckangle);
+    else if ((Get_stand_status_() == Stand_Status::Stand) && Get_UD_Neck_on_flg())
+    {
+        res_ud_neckangle = this->Get_UD_NeckAngle();
+        if (res_ud_neckangle > UD_MAX)
+            res_ud_neckangle = UD_MAX;
+        else if (res_ud_neckangle < UD_MIN)
+            res_ud_neckangle = UD_MIN;
+        Set_UD_Neck_on_flg(false);
+    }
+
+    // ROS_WARN("[MESSAGE] UD Request :   %s ", Get_UD_req_finish() ? "true" : "false");
+    // ROS_INFO("#[MESSAGE] UD Response : %f#", res_ud_neckangle);
 
     return res_ud_neckangle;
 }
@@ -643,22 +936,20 @@ double Move_Decision::Move_UD_NeckAngle()
 double Move_Decision::Move_RL_NeckAngle()
 {
     double res_rl_neckangle = 0;
-    if (Get_RL_req_finish())
+
+    if ((Get_stand_status_() == Stand_Status::Stand) && Get_RL_Neck_on_flg())
     {
-        if ((Get_stand_status_() == Stand_Status::Stand) && Get_RL_Neck_on_flg())
-        {
-            // img_procssing
-            res_rl_neckangle = this->Get_RL_NeckAngle();
-            if (res_rl_neckangle > RL_MAX)
-                res_rl_neckangle = RL_MAX;
-            else if (res_rl_neckangle < RL_MIN)
-                res_rl_neckangle = RL_MIN;
-            Set_RL_Neck_on_flg(false);
-        }
+        // img_procssing
+        res_rl_neckangle = this->Get_RL_NeckAngle();
+        if (res_rl_neckangle > RL_MAX)
+            res_rl_neckangle = RL_MAX;
+        else if (res_rl_neckangle < RL_MIN)
+            res_rl_neckangle = RL_MIN;
+        Set_RL_Neck_on_flg(false);
     }
 
-    ROS_WARN("[MESSAGE] RL Request :   %s ", Get_RL_req_finish() ? "true" : "false");
-    ROS_INFO("#[MESSAGE] RL Response : %f#", res_rl_neckangle);
+    // ROS_WARN("[MESSAGE] RL Request :   %s ", Get_RL_req_finish() ? "true" : "false");
+    // ROS_INFO("#[MESSAGE] RL Response : %f#", res_rl_neckangle);
 
     return res_rl_neckangle;
 }
@@ -666,24 +957,23 @@ double Move_Decision::Move_RL_NeckAngle()
 bool Move_Decision::Emergency()
 {
     bool res_emergency = false;
-    if (Get_EM_req_finish())
+
+    if ((Get_stand_status_() == Stand_Status::Stand) && Get_emergency_on_flg())
     {
-        if ((Get_stand_status_() == Stand_Status::Stand) && Get_emergency_on_flg())
-        {
-            // 1 : Stop
-            // 0 : Keep Going (Option)
-            res_emergency = Get_Emergency_();
-            Set_emergency_on_flg(false);
-        }
+        // 1 : Stop
+        // 0 : Keep Going (Option)
+        res_emergency = Get_Emergency_();
+        Set_emergency_on_flg(false);
     }
 
-    ROS_ERROR("[MESSAGE] EMG Request :   %s ", Get_EM_req_finish() ? "true" : "false");
-    ROS_ERROR("#[MESSAGE] EMG Response : %s#", res_emergency ? "true" : "false");
+    // ROS_ERROR("[MESSAGE] EMG Request :   %s ", Get_EM_req_finish() ? "true" : "false");
+    // ROS_ERROR("#[MESSAGE] EMG Response : %s#", res_emergency ? "true" : "false");
 
     return res_emergency;
 }
 
 ///////////////////////////////////////// About Publish & Subscribe /////////////////////////////////////////
+
 void Move_Decision::startMode()
 {
     bool send_emergency = Get_Emergency_();
@@ -723,6 +1013,250 @@ void Move_Decision::IMUsensorCallback(const std_msgs::Float32::ConstPtr &IMU)
 
     // ROS_ERROR("STAND_STAUS : %d", Get_stand_status_());
     // ROS_ERROR("PITCH : %f", pitch);
+}
+
+// ********************************************** FUNCTION ************************************************** //
+
+Eigen::Vector3d Move_Decision::convertRotationToRPY(const Eigen::Matrix3d &rotation)
+{
+    Eigen::Vector3d rpy; // = Eigen::MatrixXd::Zero(3,1);
+
+    rpy.coeffRef(0, 0) = atan2(rotation.coeff(2, 1), rotation.coeff(2, 2));
+    rpy.coeffRef(1, 0) = atan2(-rotation.coeff(2, 0), sqrt(pow(rotation.coeff(2, 1), 2) + pow(rotation.coeff(2, 2), 2)));
+    rpy.coeffRef(2, 0) = atan2(rotation.coeff(1, 0), rotation.coeff(0, 0));
+
+    return rpy;
+}
+
+Eigen::Vector3d Move_Decision::convertQuaternionToRPY(const Eigen::Quaterniond &quaternion)
+{
+    Eigen::Vector3d rpy = convertRotationToRPY(quaternion.toRotationMatrix());
+
+    return rpy;
+}
+
+void Move_Decision::Motion_Info()
+{
+    string tmp_motion;
+    switch (Get_motion_index_())
+    {
+    case Motion_Index::InitPose:
+        tmp_motion = Str_InitPose;
+        break;
+
+    case Motion_Index::Forward_2step:
+        tmp_motion = Str_Forward_2step;
+        break;
+
+    case Motion_Index::Left_2step:
+        tmp_motion = Str_Left_2step;
+        break;
+
+    case Motion_Index::Step_in_place:
+        tmp_motion = Str_Step_in_place;
+        break;
+
+    case Motion_Index::Right_2step:
+        tmp_motion = Str_Right_2step;
+        break;
+
+    case Motion_Index::ForWard_fast4step:
+        tmp_motion = Str_ForWard_fast4step;
+        break;
+
+    case Motion_Index::Forward_Nstep:
+        tmp_motion = Str_Forward_Nstep;
+        break;
+
+    case Motion_Index::Shoot:
+        tmp_motion = Str_Shoot;
+        break;
+
+    case Motion_Index::Forward_Halfstep:
+        tmp_motion = Str_Forward_Halfstep;
+        break;
+
+    case Motion_Index::Left_Halfstep:
+        tmp_motion = Str_Left_Halfstep;
+        break;
+
+    case Motion_Index::Right_Halfstep:
+        tmp_motion = Str_Right_Halfstep;
+        break;
+
+    case Motion_Index::Back_Halfstep:
+        tmp_motion = Str_Back_Halfstep;
+        break;
+
+    case Motion_Index::FWD_UP:
+        tmp_motion = Str_FWD_UP;
+        break;
+
+    case Motion_Index::BWD_UP:
+        tmp_motion = Str_BWD_UP;
+        break;
+
+    case Motion_Index::Forward_1step:
+        tmp_motion = Str_Forward_1step;
+        break;
+
+    case Motion_Index::Right_6step:
+        tmp_motion = Right_6step;
+        break;
+
+    case Motion_Index::Left_6step:
+        tmp_motion = Left_6step;
+        break;
+
+    case Motion_Index::Ready_to_throw:
+        tmp_motion = Str_Ready_to_throw;
+        break;
+
+    case Motion_Index::NONE:
+        tmp_motion = Str_NONE;
+        break;
+    }
+    ROS_INFO("Motion_Index : %s", tmp_motion.c_str());
+}
+
+void Move_Decision::Send_Motion_Info(int8_t res_motion)
+{
+    string tmp_motion;
+    switch (res_motion)
+    {
+    case Motion_Index::InitPose:
+        tmp_motion = Str_InitPose;
+        break;
+
+    case Motion_Index::Forward_2step:
+        tmp_motion = Str_Forward_2step;
+        break;
+
+    case Motion_Index::Left_2step:
+        tmp_motion = Str_Left_2step;
+        break;
+
+    case Motion_Index::Step_in_place:
+        tmp_motion = Str_Step_in_place;
+        break;
+
+    case Motion_Index::Right_2step:
+        tmp_motion = Str_Right_2step;
+        break;
+
+    case Motion_Index::ForWard_fast4step:
+        tmp_motion = Str_ForWard_fast4step;
+        break;
+
+    case Motion_Index::Forward_Nstep:
+        tmp_motion = Str_Forward_Nstep;
+        break;
+
+    case Motion_Index::Shoot:
+        tmp_motion = Str_Shoot;
+        break;
+
+    case Motion_Index::Forward_Halfstep:
+        tmp_motion = Str_Forward_Halfstep;
+        break;
+
+    case Motion_Index::Left_Halfstep:
+        tmp_motion = Str_Left_Halfstep;
+        break;
+
+    case Motion_Index::Right_Halfstep:
+        tmp_motion = Str_Right_Halfstep;
+        break;
+
+    case Motion_Index::Back_Halfstep:
+        tmp_motion = Str_Back_Halfstep;
+        break;
+
+    case Motion_Index::FWD_UP:
+        tmp_motion = Str_FWD_UP;
+        break;
+
+    case Motion_Index::BWD_UP:
+        tmp_motion = Str_BWD_UP;
+        break;
+
+    case Motion_Index::Forward_1step:
+        tmp_motion = Str_Forward_1step;
+        break;
+
+    case Motion_Index::Right_6step:
+        tmp_motion = Right_6step;
+        break;
+
+    case Motion_Index::Left_6step:
+        tmp_motion = Left_6step;
+        break;
+
+    case Motion_Index::Ready_to_throw:
+        tmp_motion = Str_Ready_to_throw;
+        break;
+
+    case Motion_Index::NONE:
+        tmp_motion = Str_NONE;
+        break;
+    }
+    ROS_ERROR("SEND Motion_Index : %s", tmp_motion.c_str());
+}
+
+void Move_Decision::Send_Info(int8_t motion_, double turn_angle_, double ud, double rl, bool emg)
+{
+    ROS_INFO("------------------------- SEND ----------------------------");
+    Send_Motion_Info(motion_);
+    ROS_ERROR("#[MESSAGE] TA Response : %f#", turn_angle_);
+    ROS_ERROR("#[MESSAGE] UD Response : %f#", ud);
+    ROS_ERROR("#[MESSAGE] RL Response : %f#", rl);
+    ROS_ERROR("#[MESSAGE] EMG Response : %s#", emg ? "true" : "false");
+    ROS_INFO("------------------------- SEND ----------------------------");
+}
+
+void Move_Decision::Running_Info()
+{
+    string tmp_running;
+    switch (Get_running_mode_())
+    {
+    case Running_Mode::FAR_HOOP_MODE:
+        tmp_running = Str_FAR_HOOP_MODE;
+        break;
+
+    case Running_Mode::ADJUST_MODE:
+        tmp_running = Str_ADJUST_MODE;
+        break;
+
+    case Running_Mode::STOP_MODE:
+        tmp_running = Str_STOP_MODE;
+        break;
+
+    case Running_Mode::WAKEUP_MODE:
+        tmp_running = Str_WAKEUP_MODE;
+        break;
+
+    case Running_Mode::SHOOT_MODE:
+        tmp_running = Str_SHOOT_MODE;
+        break;
+
+    case Running_Mode::NO_HOOP_MODE:
+        tmp_running = Str_NO_HOOP_MODE;
+        break;
+
+        ROS_INFO("Running_Mode : %s", tmp_running.c_str());
+    }
+}
+
+void Move_Decision::DistanceDecision(double distance_)
+{
+    if (distance_ > Green_area_dis) // judged to be a straight line. If it exists between the slopes, it is a straight line.
+    {
+        robot_forward = true;
+    }
+    else if (distance_ < Green_area_dis)
+    {
+        robot_forward = false;
+    }
 }
 
 // ********************************************** GETTERS ************************************************** //
@@ -1045,141 +1579,4 @@ void Move_Decision::Set_EM_req_finish(bool EM_req_finish)
 {
     std::lock_guard<std::mutex> lock(mtx_EM_req_finish_);
     this->EM_req_finish_ = EM_req_finish;
-}
-
-// ********************************************** FUNCTION ************************************************** //
-
-Eigen::Vector3d Move_Decision::convertRotationToRPY(const Eigen::Matrix3d &rotation)
-{
-    Eigen::Vector3d rpy; // = Eigen::MatrixXd::Zero(3,1);
-
-    rpy.coeffRef(0, 0) = atan2(rotation.coeff(2, 1), rotation.coeff(2, 2));
-    rpy.coeffRef(1, 0) = atan2(-rotation.coeff(2, 0), sqrt(pow(rotation.coeff(2, 1), 2) + pow(rotation.coeff(2, 2), 2)));
-    rpy.coeffRef(2, 0) = atan2(rotation.coeff(1, 0), rotation.coeff(0, 0));
-
-    return rpy;
-}
-
-Eigen::Vector3d Move_Decision::convertQuaternionToRPY(const Eigen::Quaterniond &quaternion)
-{
-    Eigen::Vector3d rpy = convertRotationToRPY(quaternion.toRotationMatrix());
-
-    return rpy;
-}
-
-void Move_Decision::Motion_Info()
-{
-    string tmp_motion;
-    switch (Get_motion_index_())
-    {
-    case Motion_Index::InitPose:
-        tmp_motion = Str_InitPose;
-        break;
-
-    case Motion_Index::Forward_4step:
-        tmp_motion = Str_Forward_4step;
-        break;
-
-    case Motion_Index::Left_2step:
-        tmp_motion = Str_Left_2step;
-        break;
-
-    case Motion_Index::Step_in_place:
-        tmp_motion = Str_Step_in_place;
-        break;
-
-    case Motion_Index::Right_2step:
-        tmp_motion = Str_Right_2step;
-        break;
-
-    case Motion_Index::ForWard_fast4step:
-        tmp_motion = Str_ForWard_fast4step;
-        break;
-
-    case Motion_Index::Forward_Nstep:
-        tmp_motion = Str_Forward_Nstep;
-        break;
-
-    case Motion_Index::Huddle_Jump:
-        tmp_motion = Str_Huddle_Jump;
-        break;
-
-    case Motion_Index::Forward_Halfstep:
-        tmp_motion = Str_Forward_Halfstep;
-        break;
-
-    case Motion_Index::Left_Halfstep:
-        tmp_motion = Str_Left_Halfstep;
-        break;
-
-    case Motion_Index::Right_Halfstep:
-        tmp_motion = Str_Right_Halfstep;
-        break;
-
-    case Motion_Index::Back_Halfstep:
-        tmp_motion = Str_Back_Halfstep;
-        break;
-
-    case Motion_Index::FWD_UP:
-        tmp_motion = Str_FWD_UP;
-        break;
-
-    case Motion_Index::BWD_UP:
-        tmp_motion = Str_BWD_UP;
-        break;
-
-    case Motion_Index::Shoot:
-        tmp_motion = Str_Shoot;
-        break;
-
-    case Motion_Index::NONE:
-        tmp_motion = Str_NONE;
-        break;
-    }
-    ROS_INFO("Motion_Index : %s", tmp_motion.c_str());
-}
-
-void Move_Decision::Running_Info()
-{
-    string tmp_running;
-    switch (Get_running_mode_())
-    {
-    case Running_Mode::FAR_HOOP_MODE:
-        tmp_running = Str_FAR_HOOP_MODE;
-        break;
-
-    case Running_Mode::ADJUST_MODE:
-        tmp_running = Str_ADJUST_MODE;
-        break;
-
-    case Running_Mode::STOP_MODE:
-        tmp_running = Str_STOP_MODE;
-        break;
-
-    case Running_Mode::WAKEUP_MODE:
-        tmp_running = Str_WAKEUP_MODE;
-        break;
-
-    case Running_Mode::SHOOT_MODE:
-        tmp_running = Str_SHOOT_MODE;
-        break;
-
-    case Running_Mode::NO_HOOP_MODE:
-        tmp_running = Str_NO_HOOP_MODE;
-        break;
-
-        ROS_INFO("Running_Mode : %s", tmp_running.c_str());
-    }
-}
-
-void Move_Decision::DistanceDecision(double distance_)
-{
-    if (distance_ > Green_area_dis) // judged to be a straight line. If it exists between the slopes, it is a straight line.
-    {
-        robot_forward = true;
-    }
-    else if (distance_ < Green_area_dis)
-    {
-        robot_forward = false;
-    }
 }

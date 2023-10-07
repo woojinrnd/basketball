@@ -17,14 +17,17 @@
 
 #define UD_MAX 90
 #define UD_MIN 0
-#define UD_CENTER 80
+#define UD_CENTER 15
 
 #define RL_MAX 90
 #define RL_MIN -90
 #define RL_CENTER 0
 
-#define TURN_MAX 90
-#define TURN_MIN -90
+#define TURN_MAX 10
+#define TURN_MIN -10
+#define NOLINE_ANGLE 15
+
+#define ADJUST_TURN 5
 
 using namespace std;
 
@@ -33,22 +36,28 @@ class Move_Decision
 public:
     enum Motion_Index
     {
-        InitPose = 0,
-        Forward_4step = 1,
-        Left_2step = 2,
-        Step_in_place = 3,
-        Right_2step = 4,
-        Forward_Nstep = 5,
-        Huddle_Jump = 6,
-        ForWard_fast4step = 7,
-        FWD_UP = 8,
-        BWD_UP = 9,
-        Forward_Halfstep = 10,
-        Left_Halfstep = 11,
-        Right_Halfstep = 12,
-        Back_Halfstep = 13,
-        Shoot = 14,
-        NONE = 99,
+    InitPose = 0,
+    Forward_2step = 1,
+    Left_2step = 2,
+    Step_in_place = 3,
+    Right_2step = 4,
+    Forward_Nstep = 5,
+    ForWard_fast4step = 7,
+    FWD_UP = 8,
+    BWD_UP = 9,
+    Forward_Halfstep = 10,
+    Left_Halfstep = 11,
+    Right_Halfstep = 12,
+    Back_Halfstep = 13,
+    Forward_1step = 14,
+    Left_6step = 15,
+    Right_6step = 16,
+    Shoot = 17,
+    Ready_to_throw = 18,
+    Grab = 20,
+    START = 50,
+    NONE = 99,
+    FINISH = 100,
     };
 
     enum Running_Mode
@@ -69,20 +78,23 @@ public:
     };
 
     string Str_InitPose = "InitPose";
-    string Str_Forward_4step = "Forward_4step";
+    string Str_Forward_2step = "Forward_2step";
+    string Str_Forward_1step = "Forward_1step";
     string Str_Left_2step = "Left_2step";
     string Str_Step_in_place = "Step_in_place";
     string Str_Right_2step = "Right_2step";
     string Str_ForWard_fast4step = "ForWard_fast4step";
     string Str_Forward_Nstep = "Forward_Nstep";
-    string Str_Huddle_Jump = "Huddle_Jump";
+    string Str_Shoot = "Shoot";
+    string Str_Ready_to_throw = "Ready to throw";
     string Str_Forward_Halfstep = "Forward_Halfstep";
     string Str_Left_Halfstep = "Left_Halfstep";
     string Str_Right_Halfstep = "Right_Halfstep";
     string Str_Back_Halfstep = "Back_Halfstep";
+    string Str_Left_6step = "Left_6step";
+    string Str_Right_6step = "Right_6step";
     string Str_FWD_UP = "FWD_UP";
     string Str_BWD_UP = "BWD_UP";
-    string Str_Shoot = "Shoot";
     string Str_NONE = "NONE";
 
     string Str_FAR_HOOP_MODE = "FAR_HOOP_MODE";
@@ -151,7 +163,23 @@ public:
     Eigen::Vector3d convertQuaternionToRPY(const Eigen::Quaterniond &quaternion);
     void Motion_Info();
     void Running_Info();
+
+    void Send_Motion_Info(int8_t res_motion);
+    void Send_Info(int8_t motion_, double turn_angle_, double ud, double rl, bool emg);
+
     void DistanceDecision(double distance_);
+    void Test_service();
+
+    /////////////////////// Sequence++ ///////////////////////
+    bool finish_past = false;
+    int8_t req_finish_count = 0;
+
+    // check the variable sharing with multi thread
+    int aaaa = 0;
+    int ccc = 0;
+    int abb = 0;
+    int abc = 1;
+    int b = aaaa % 2;
 
     // ********************************************** GETTERS ************************************************** //
 
@@ -225,23 +253,40 @@ public:
 
     // ********************************************** IMG_PROC ************************************************** //
 
-    // Corner Sequence
-    // 0 : corner_shape dicision (From img_proc_corner_number) (Depth)
-    // 1 : Motion : InitPose (For getting distance) (Depth)
-    // 2 : Motion : Forward_Nstep (Far)
-    // 3 : Motion : InitPose (For getting distance) (Depth)
-    // 4 : Motion : Forward_Nstep (Approach)
-    // 5 : Motion : Step in place
-    // 6 : Motion : Turn Angle 90(ㅓ) or -90(ㅜ)
-    double Angle_ToStartWall = 90;
+    /////////////////////// Far Hoop Mode ///////////////////////
     bool robot_forward = false;
-    bool Turn90 = false;
     double Green_area_dis = 1;
     int8_t hoop_distance = 0;
     int8_t far_hoop_motion = 0;
-    int8_t img_adjust_number_case = 0;
-    int8_t adjust_number_seq = 0;
+
+    /////////////////////// Adjust Mode ///////////////////////
+    // 0 : Approach to the Adjust --> Motion : Motion_Index::Forward_Halfstep (Until adjust center)
+    // 1 : Pose Control (Posture(Gradient))
+    // 2 : Motion : SHOOT
+    // 3 : Initializing
+    int8_t tmp_adjust_seq = 0;
+    int8_t img_proc_adjust_delta_x = 0;
+    int8_t adjust_motion = 0;
+    bool img_proc_contain_adjust_to_foot = false; // huddle Y Point
+    bool contain_adjust_X = false; // adjust X Point
+    bool contain_adjust_Y = false; // adjust Y Point
+    bool adjust_posture = false;   // adjust gradient
+    bool adjust_seq_finish = false;
+    double img_proc_adjust_angle = 0;
+    double adjust_actual_angle = 0;
+
+    string Str_ADJUST_SEQUENCE_0 = "ADJUST_SEQUENCE_0 : POSTURE CONTROL";
+    string Str_ADJUST_SEQUENCE_1 = "ADJUST_SEQUENCE_1 : POSITION CONTROL";
+    string Str_ADJUST_SEQUENCE_2 = "ADJUST_SEQUENCE_3 : Ready_to_throw";
+    string Str_ADJUST_SEQUENCE_3 = "ADJUST_SEQUENCE_2 : POSTURE CONTROL ONE MORE TIME";
+    string Str_ADJUST_SEQUENCE_4 = "ADJUST_SEQUENCE_4 : SHOOT";
+    string Str_ADJUST_SEQUENCE_5 = "ADJUST_SEQUENCE_5 : INITIALIZING";
+
+    /////////////////////// No Hoop Mode ///////////////////////
     int8_t tmp_delta_x = 0;
+    int8_t nohoop_motion = 0;
+    double nohoop_actual_angle = 0;
+
 
     /////////////////////// WAKEUP_MODE ///////////////////////
     // WakeUp_seq = 0 : Initial
@@ -252,10 +297,6 @@ public:
     int8_t tmp_stand_status = 0;
     int8_t wakeup_motion = 0;
     int8_t wakeup_running = 0;
-
-    // check the variable sharing with multi thread
-    int aaaa = 1;
-    int b = aaaa % 2;
 
     int warning_counter = 0;
     bool warning_printed = false;

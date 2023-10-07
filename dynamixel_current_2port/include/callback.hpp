@@ -29,12 +29,11 @@ public:
   enum Motion_Index
   {
     InitPose = 0,
-    Forward_4step = 1,
+    Forward_2step = 1,
     Left_2step = 2,
     Step_in_place = 3,
     Right_2step = 4,
     Forward_Nstep = 5,
-    Huddle_Jump = 6,
     ForWard_fast4step = 7,
     FWD_UP = 8,
     BWD_UP = 9,
@@ -42,25 +41,35 @@ public:
     Left_Halfstep = 11,
     Right_Halfstep = 12,
     Back_Halfstep = 13,
-    Shoot = 14,
+    Forward_1step = 14,
+    Left_6step = 15,
+    Right_6step = 16,
+    Shoot = 17,
+    Ready_to_throw = 18,
+    Grab = 20,
+    START = 50,
     NONE = 99,
+    FINISH = 100,
   };
 
   string Str_InitPose = "InitPose";
-  string Str_Forward_4step = "Forward_4step";
+  string Str_Forward_2step = "Forward_2step";
+  string Str_Forward_1step = "Forward_1step";
   string Str_Left_2step = "Left_2step";
   string Str_Step_in_place = "Step_in_place";
   string Str_Right_2step = "Right_2step";
   string Str_ForWard_fast4step = "ForWard_fast4step";
   string Str_Forward_Nstep = "Forward_Nstep";
-  string Str_Huddle_Jump = "Huddle_Jump";
+  string Str_Shoot = "Shoot";
+  string Str_Ready_to_throw = "Ready to throw";
   string Str_Forward_Halfstep = "Forward_Halfstep";
   string Str_Left_Halfstep = "Left_Halfstep";
   string Str_Right_Halfstep = "Right_Halfstep";
   string Str_Back_Halfstep = "Back_Halfstep";
+  string Str_Left_6step = "Left_6step";
+  string Str_Right_6step = "Right_6step";
   string Str_FWD_UP = "FWD_UP";
   string Str_BWD_UP = "BWD_UP";
-  string Str_Shoot = "Shoot";
   string Str_NONE = "NONE";
 
   // Callback();
@@ -95,10 +104,12 @@ public:
   ros::Subscriber joint_state_subscriber_;  ///< Gets joint states for writes
   ros::Subscriber FSR_L_sensor_subscriber_; ///< Gets FSR Sensor data from Arduino FSR_L
   ros::Subscriber FSR_R_sensor_subscriber_; ///< Gets FSR Sensor data from Arduino FSR_R
+  ros::Subscriber Start_subscriber_;        ///< Start
 
   virtual void JointStatesCallback(const sensor_msgs::JointState::ConstPtr &joint_command);
   virtual void L_FSRsensorCallback(const std_msgs::UInt8::ConstPtr &FSR);
   virtual void R_FSRsensorCallback(const std_msgs::UInt8::ConstPtr &FSR);
+  virtual void StartMode(const std_msgs::UInt8::ConstPtr &start);
 
   /////////Service callbacek
   ros::ServiceClient client_SendMotion = nh.serviceClient<dynamixel_current_2port::SendMotion>("/Move_decision/SendMotion");
@@ -128,11 +139,11 @@ public:
   double vel_y = 0;
   double vel_z = 0;
 
-  //TEST
+  // TEST
   bool a = false;
   int b = 1;
-  
-  //PRINT
+
+  // PRINT
   int error_counter = 0;
   bool error_printed = false;
 
@@ -144,8 +155,9 @@ public:
   int indext = 0;
   int check_indext = 0;
   int stop_indext = 0;
-  bool on_angle = false;
-  int emergency = 0;
+  bool turn_left = false;
+  bool turn_right = false;
+  int emergency = 99;
   bool on_emergency = false;
   double angle = 0;
   int index_angle = 0;

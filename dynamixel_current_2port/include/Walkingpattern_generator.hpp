@@ -37,13 +37,17 @@ private:
 	Matrix4d Ac_p;
 	MatrixXd Gd;
 	double sim_time;
+	RowVectorXd xzmp_ref;
+	RowVectorXd yzmp_ref;
+
 	
-	RowVectorXd zmp_ref;
-	RowVectorXd zmp_ref_fifo;
-	RowVectorXd u;
-	RowVectorXd zmp;
-	RowVectorXd zmp_ref_final;
-	RowVectorXd CP;
+	VectorXd zmp_ref;
+	VectorXd zmp_ref_fifo;
+	VectorXd u;
+	VectorXd zmp;
+	VectorXd zmp_ref_final;
+	VectorXd ref_xCP;
+	VectorXd ref_yCP;
 	double zmp_err_int;
 	double u_prev;
 	VectorXd Ref_Xpos;
@@ -55,12 +59,7 @@ private:
 	Matrix<double, 6, 1> XStep;
 	Matrix<double, 6, 1> XStride;
 	double L0 = 0.06;
-	//double L1 = 35.64;
-	//double L2 = 36.07;
-	//double L3 = 136.29;
-	//double L4 = 111.76;
-	//double L5 = 36.10;
-	//double L6 = 29.79;
+
 
 
 public:
@@ -72,11 +71,19 @@ public:
 	void Set_distance(double Goal_distance);
 	MatrixXd PreviewGd();
 	double Return_Step_n();
+	VectorXd Get_xCP();
+	VectorXd Get_yCP();
+	RowVectorXd Get_xZMP();
+	RowVectorXd Get_yZMP();
 	MatrixXd YComSimulation();
 	MatrixXd XComSimulation();
 	MatrixXd YComSimulation_Sidewalk(double a, double b, double c, double d, double e, double f);
+	MatrixXd YComSimulation_Sidewalk_half(double a, double b, double c, double d);
+	MatrixXd YComSimulation_Sidewalk6(double step);
 	MatrixXd Huddle_Xcom();
 	MatrixXd Huddle_Ycom();
+	MatrixXd Huddle_Xcom1();
+	MatrixXd Huddle_Ycom1();
 
 	MatrixXd Equation_solver(double t0, double t1, double start, double end);
 	double Step(double t);
@@ -85,6 +92,7 @@ public:
 	MatrixXd LF_xsimulation_straightwalk();
 	MatrixXd RF_zsimulation_straightwalk(double h);
 	MatrixXd LF_zsimulation_straightwalk(double h);
+
 	MatrixXd RF_ysimulation_leftwalk();
 	MatrixXd LF_ysimulation_leftwalk();
 	MatrixXd RF_zsimulation_leftwalk();
@@ -93,10 +101,38 @@ public:
 	MatrixXd LF_ysimulation_rightwalk();
 	MatrixXd RF_zsimulation_rightwalk();
 	MatrixXd LF_zsimulation_rightwalk();
+
+	MatrixXd RF_ysimulation_leftwalk_halfstep();
+	MatrixXd LF_ysimulation_leftwalk_halfstep();
+	MatrixXd RF_zsimulation_leftwalk_halfstep();
+	MatrixXd LF_zsimulation_leftwalk_halfstep();
+	MatrixXd RF_ysimulation_rightwalk_halfstep();
+	MatrixXd LF_ysimulation_rightwalk_halfstep();
+	MatrixXd RF_zsimulation_rightwalk_halfstep();
+	MatrixXd LF_zsimulation_rightwalk_halfstep();
+
+	MatrixXd RF_ysimulation_leftwalk6();
+	MatrixXd LF_ysimulation_leftwalk6();
+	MatrixXd RF_zsimulation_leftwalk6();
+	MatrixXd LF_zsimulation_leftwalk6();
+	MatrixXd RF_ysimulation_rightwalk6();
+	MatrixXd LF_ysimulation_rightwalk6();
+	MatrixXd RF_zsimulation_rightwalk6();
+	MatrixXd LF_zsimulation_rightwalk6();
+
 	MatrixXd RF_xsimulation_huddle();
 	MatrixXd LF_xsimulation_huddle();
-	MatrixXd RF_zsimulation_huddle(double h);
-	MatrixXd LF_zsimulation_huddle(double h);
+	MatrixXd RF_zsimulation_huddle(double h, double COM_h);
+	MatrixXd LF_zsimulation_huddle(double h, double COM_h);
+	MatrixXd RF_xsimulation_huddle1();
+	MatrixXd LF_xsimulation_huddle1();
+	MatrixXd RF_zsimulation_huddle1(double h);
+	MatrixXd LF_zsimulation_huddle1(double h);
+
+	MatrixXd RF_zsimulation_sitdown(double h);
+	MatrixXd LF_zsimulation_sitdown(double h);
+	MatrixXd RF_zsimulation_standup(double h);
+	MatrixXd LF_zsimulation_standup(double h);
 
 	void Make_turn_trajectory(double angle);
 	double Return_turn_trajectory(double t);
@@ -105,10 +141,17 @@ public:
 	void Freq_Change_Straight(double step, double distance, double height, double freq);
 	void Side_Left2();
 	void Side_Right2();
-	void Step_in_place(double step, double distance);
+	void Side_Left6();
+	void Side_Right6();
+	void Side_Left1();
+	void Side_Right1();
+	void Step_in_place(double step, double distance,double height);
 	void Stop_Trajectory_straightwalk(double step);
 	void Stop_Trajectory_stepinplace(double step);
-	void Huddle_Motion(double step,double height);
+	void Huddle_Motion(double step,double height,double COM_h);
+	void Huddle_Motion1(double step,double height);
+	void Stand_up();
+	void Sit_down();
 	MatrixXd Ref_RL_x;
 	MatrixXd Ref_RL_y;
 	MatrixXd Ref_RL_z;
@@ -128,11 +171,19 @@ public:
 	MatrixXd rsRef_LL_x;
 	MatrixXd rsRef_LL_y;
 	MatrixXd rsRef_LL_z;
-	
+/////////////////////////////////////////////////////////////////com and foot position
+	MatrixXd Xcom;
+	MatrixXd Ycom;
+	MatrixXd LF_xFoot;
+	MatrixXd RF_xFoot;
+	MatrixXd RF_yFoot;
+	MatrixXd LF_yFoot;
+
 	VectorXd Turn_Trajectory;
 };
 
-class IK_Function {
+class IK_Function
+{
 private:
 	double walkfreq;
 	double walktime;
@@ -213,15 +264,15 @@ public:
 	MatrixXd BRP_RL_Simulation(MatrixXd RFx, MatrixXd RFy, MatrixXd RFz);
 	MatrixXd BRP_LL_Simulation(MatrixXd RFx, MatrixXd RFy, MatrixXd RFz);
 	void BRP_Simulation(MatrixXd RFx, MatrixXd RFy, MatrixXd RFz, MatrixXd LFx, MatrixXd LFy, MatrixXd LFz, int time);
-	void Angle_Compensation(int indext);
+	void Angle_Compensation(int indext, int size);
 	void Fast_Angle_Compensation(int indext);
 	void Angle_Compensation_Huddle(int indext);
 	void Set_Angle_Compensation(int walktime_n);
-	void Change_Angle_Compensation(double RL_Support,double RL_Swing,double RL_Ankle,double LL_Support,double LL_Swing,double LL_Ankle);
+	void Change_Angle_Compensation(double RL_Support, double RL_Swing, double RL_Knee , double RL_Ankle, double LL_Support, double LL_Swing, double LL_Knee ,double LL_Ankle);
 	void Angle_Compensation_Leftwalk(int indext);
+	void Angle_Compensation_Rightwalk(int indext);
 	double RL_th[6] = { 0.,0.,-0.610865,1.22173,0.610865,0. }, LL_th[6] = { 0.,0.,-0.610865,1.22173,0.610865, 0.};
 	void Change_Com_Height(double h);
     
 	double check_index;
-
 };

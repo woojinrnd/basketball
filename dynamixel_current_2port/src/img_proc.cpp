@@ -229,9 +229,6 @@ void Img_proc::realsense_thread()
 
             cv::imshow(window_name, depthMat);
             cv::imshow(window_name_color, colorMat);
-
-            // cv::imshow(window_name, depthMat);
-            // cv::imshow(window_name_color, colorMat);
         }
     }
     catch (const rs2::error &e)
@@ -296,6 +293,12 @@ double Img_proc::Get_gradient() const
     return gradient_;
 }
 
+double Img_proc::Get_adjust_angle() const
+{
+    std::lock_guard<std::mutex> lock(mtx_adjust_angle);
+    return adjust_angle_;
+}
+
 // ********************************************** SETTERS ************************************************** //
 
 void Img_proc::Set_img_proc_Far_Hoop_det(bool img_proc_far_hoop_det)
@@ -351,3 +354,10 @@ void Img_proc::Set_gradient(double gradient)
     std::lock_guard<std::mutex> lock(mtx_gradient);
     this->gradient_ = gradient;
 }
+
+void Img_proc::Set_adjust_angle(double adjust_angle)
+{
+    std::lock_guard<std::mutex> lock(mtx_adjust_angle);
+    this->adjust_angle_ = adjust_angle;
+}
+
