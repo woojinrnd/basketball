@@ -50,7 +50,7 @@ void Move_Decision::process()
     // Set_No_Hoop_flg(true);
 
     // AdJUST MODE
-    Set_Adjust_flg(true);
+    // Set_Adjust_flg(true);
 
     //////////////////////////////////////   DEBUG WINDOW    //////////////////////////////////////
 

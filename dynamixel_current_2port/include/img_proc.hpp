@@ -100,6 +100,10 @@ public:
     cv::Scalar lower_bound_green = {35, 50, 50};
     cv::Scalar upper_bound_green = {85, 255, 255};
 
+    cv::Scalar lower_bound_blue = {85, 255, 255};
+    cv::Scalar upper_bound_blue = {85, 255, 255};
+
+
     bool a = 0;
 
     bool left = false;
@@ -111,7 +115,7 @@ public:
     void create_color_range_trackbar(const std::string &window_name);
     void create_threshold_trackbar_Black(const std::string &window_name);
     std::tuple<cv::Mat, cv::Mat> extract_color(const cv::Mat &input_frame, const cv::Scalar &lower_bound, const cv::Scalar &upper_bound);
-    std::tuple<bool, cv::Point, cv::Point, cv::Point, cv::Point, double> Is_AreaThreshold(const cv::Mat& image, cv::Scalar lower_bound, cv::Scalar upper_bound, int green_area);
+    std::tuple<bool, cv::Point, cv::Point, cv::Point, cv::Point, double, cv::Mat> Is_AreaThreshold(const cv::Mat& image, cv::Scalar lower_bound, cv::Scalar upper_bound, int green_area);
 
 
     // ********************************************** 3D THREAD************************************************** //

@@ -34,64 +34,149 @@ void Img_proc::create_color_range_trackbar(const std::string &window_name)
     cv::createTrackbar("Value Lower", window_name, &value_lower, 255, on_trackbar);
     cv::createTrackbar("Value Upper", window_name, &value_upper, 255, on_trackbar);
 }
+
 void Img_proc::create_threshold_trackbar_Black(const std::string &window_name)
 {
     cv::createTrackbar("Threshold_Black", window_name, &threshold_value_black, max_value, on_trackbar);
 }
 
-std::tuple<bool, cv::Point, cv::Point, cv::Point, cv::Point, double> Img_proc::Is_AreaThreshold(const cv::Mat& image, cv::Scalar lower_bound, cv::Scalar upper_bound, int green_area)
+std::tuple<bool, cv::Point, cv::Point, cv::Point, cv::Point, double, cv::Mat> Img_proc::Is_AreaThreshold(const cv::Mat &image, cv::Scalar lower_bound, cv::Scalar upper_bound, int green_area)
 {
+    cv::Mat extract = image.clone();
+
     cv::Mat hsv;
-        cv::cvtColor(image, hsv, cv::COLOR_BGR2HSV);
+    cv::cvtColor(extract, hsv, cv::COLOR_BGR2HSV);
 
-        // 초록색 영역을 이진화
-        cv::Mat mask;
-        cv::inRange(hsv, lower_bound, upper_bound, mask);
+    // 초록색 영역을 이진화
+    cv::Mat mask;
+    cv::inRange(hsv, lower_bound, upper_bound, mask);
 
-        // 연결된 요소를 찾기
-        std::vector<std::vector<cv::Point>> contours;
-        cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    // 연결된 요소를 찾기
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-        bool is_Green = false;
-        cv::Point maxYPoint(-1, -1);
-        cv::Point minYPoint(-1, INT_MAX);
-        cv::Point maxXPoint(-1, -1);
-        cv::Point minXPoint(INT_MAX, -1);
+    bool is_Green = false;
+    cv::Point maxYPoint(-1, -1);
+    cv::Point minYPoint(-1, INT_MAX);
+    cv::Point maxXPoint(-1, -1);
+    cv::Point minXPoint(INT_MAX, -1);
 
-        // 각 연결된 요소의 넓이를 계산하고 green_area 픽셀 이상인지 확인
-        for (const auto& contour : contours) {
-            if (cv::contourArea(contour) >= green_area) {
-                is_Green = true;
+    // for (size_t i = 0; i < contours.size(); i++)
+    // {
+    //     if (cv::contourArea(contours[i]) >= green_area && !contours.empty())
+    //     {
+    //         is_Green = true;
 
-                // 극값을 찾기
-                for (const auto& pt : contour) {
-                    // y 최대
-                    if (pt.y > maxYPoint.y) {
-                        maxYPoint = pt;
-                    }
-                    // y 최소
-                    if (pt.y < minYPoint.y) {
-                        minYPoint = pt;
-                    }
-                    // x 최대 (가장 오른쪽)
-                    if (pt.x > maxXPoint.x) {
-                        maxXPoint = pt;
-                    }
-                    // x 최소 (가장 왼쪽)
-                    if (pt.x < minXPoint.x) {
-                        minXPoint = pt;
-                    }
+    //         cv::drawContours(extract, contours, i, cv::Scalar(0, 255, 0), 2); // 현재 컨투어만 그리기
+
+    //         for (const auto &pt : contours[i])
+    //         {
+    //             // y 최대
+    //             if (pt.y > maxYPoint.y)
+    //             {
+    //                 maxYPoint = pt;
+    //             }
+    //             // y 최소
+    //             if (pt.y < minYPoint.y)
+    //             {
+    //                 minYPoint = pt;
+    //             }
+    //             // x 최대 (가장 오른쪽)
+    //             if (pt.x > maxXPoint.x)
+    //             {
+    //                 maxXPoint = pt;
+    //             }
+    //             // x 최소 (가장 왼쪽)
+    //             if (pt.x < minXPoint.x)
+    //             {
+    //                 minXPoint = pt;
+    //             }
+    //         }
+    //         break;
+    //     }
+    // }
+
+    // double deltaY = static_cast<double>(maxXPoint.y - minXPoint.y);
+    // double deltaX = static_cast<double>(maxXPoint.x - minXPoint.x);
+    // double angleRadians = std::atan2(deltaY, deltaX);
+    // double angleDegrees = angleRadians * (180.0 / CV_PI);
+
+    if (!contours.empty())
+    {
+        // 가장 큰 활꼴을 선택
+        double maxArea = 0;
+        int maxIdx = -1;
+        for (size_t i = 0; i < contours.size(); i++)
+        {
+            if (contours[i].size() < 5) // 5개 미만의 점을 가진 경계선은 무시
+                continue;
+            double area = cv::contourArea(contours[i]);
+            if (area > maxArea)
+            {
+                maxArea = area;
+                maxIdx = i;
+            }
+
+            for (const auto &pt : contours[i])
+            {
+                // y 최대
+                if (pt.y > maxYPoint.y)
+                {
+                    maxYPoint = pt;
                 }
-                break;
+                // y 최소
+                if (pt.y < minYPoint.y)
+                {
+                    minYPoint = pt;
+                }
+                // x 최대 (가장 오른쪽)
+                if (pt.x > maxXPoint.x)
+                {
+                    maxXPoint = pt;
+                }
+                // x 최소 (가장 왼쪽)
+                if (pt.x < minXPoint.x)
+                {
+                    minXPoint = pt;
+                }
             }
         }
 
-        double deltaY = static_cast<double>(maxXPoint.y - minXPoint.y);
-        double deltaX = static_cast<double>(maxXPoint.x - minXPoint.x);
-        double angleRadians = std::atan2(deltaY, deltaX);
-        double angleDegrees = angleRadians * (180.0 / CV_PI);
 
-        return {is_Green, maxYPoint, minYPoint, maxXPoint, minXPoint, angleDegrees};
+        if (maxIdx >= 0)
+        {
+            is_Green = true;
+            // 활꼴의 접선 방정식 계산
+            cv::RotatedRect minEllipse = cv::fitEllipse(contours[maxIdx]);
+
+            // 접선 방정식의 두 점 가져오기
+            cv::Point2f points[2];
+            minEllipse.points(points);
+            cv::Point2f point1 = points[0];
+            cv::Point2f point2 = points[1];
+
+            // 기울기 계산
+            float a = (point2.y - point1.y) / (point2.x - point1.x);
+
+            // 기울기를 각도로 변환 (라디안에서도 동작)
+            float angle = atan(a) * 180.0 / CV_PI;
+
+            // 각도 출력
+            std::cout << "각도: " << angle << "도" << std::endl;
+
+            // 활꼴 그리기
+            cv::drawContours(extract, contours, maxIdx, cv::Scalar(0, 255, 0), 2);
+        }
+    }
+    else
+    {
+        std::cout << "활꼴을 찾을 수 없습니다." << std::endl;
+        is_Green = false;
+    }
+
+    float angleDegrees = atan(a) * 180.0 / CV_PI;
+
+    return {is_Green, maxYPoint, minYPoint, maxXPoint, minXPoint, angleDegrees, extract};
 }
 
 void Img_proc::webcam_thread()
@@ -121,14 +206,11 @@ void Img_proc::webcam_thread()
         return;
     }
 
-    // const std::string window_name1 = "hsv Frame_white";
-    const std::string window_name2 = "thresh Frame_white";
-    // const std::string window_name3 = "hsv Frame_yellow";
-    const std::string window_name4 = "thresh Frame_yellow";
-    // cv::namedWindow(window_name1);
-    cv::namedWindow(window_name2);
-    // cv::namedWindow(window_name3);
-    cv::namedWindow(window_name4);
+    const std::string window_Green = "Green_Extract";
+    const std::string window_Blue = "Blue_Extract";
+
+    cv::namedWindow(window_Green);
+    cv::namedWindow(window_Blue);
 
     cv::Mat frame, hsv_frame_white, hsv_frame_yellow, thresh_frame_white, thresh_frame_yellow, gray;
 
@@ -139,7 +221,7 @@ void Img_proc::webcam_thread()
             break;
 
         auto Green_Exis = Is_AreaThreshold(frame, lower_bound_green, upper_bound_green, 1000);
-        auto Foot_Exis = Is_AreaThreshold(frame, lower_bound_green, upper_bound_green, 1000);
+        auto Foot_Exis = Is_AreaThreshold(frame, lower_bound_blue, upper_bound_blue, 1000);
 
         bool is_Green = std::get<0>(Green_Exis);
         cv::Point Bottom_Green = std::get<2>(Green_Exis);
@@ -148,9 +230,9 @@ void Img_proc::webcam_thread()
         cv::Point Top_Foot = std::get<2>(Foot_Exis);
 
         int Distance_Green_Foot = Top_Foot.y - Bottom_Green.y;
-        Set_contain_adjust_to_foot(Distance_Green_Foot);
 
-        this->Set_img_proc_Adjust_det(is_Green);
+        cv::imshow(window_Green, std::get<6>(Green_Exis));
+        cv::imshow(window_Blue, std::get<6>(Foot_Exis));
 
         if (cv::waitKey(1) == 27)
             break;
@@ -200,32 +282,30 @@ std::tuple<cv::Mat, cv::Point2f> Img_proc::Hoop_Detect(cv::Mat color, cv::Mat de
 
     if (!black_contours.empty())
     {
-        std::sort(black_contours.begin(), black_contours.end(), [](const std::vector<cv::Point>& c1, const std::vector<cv::Point>& c2){
-            return cv::contourArea(c1, false) > cv::contourArea(c2, false);
-        });
+        std::sort(black_contours.begin(), black_contours.end(), [](const std::vector<cv::Point> &c1, const std::vector<cv::Point> &c2)
+                  { return cv::contourArea(c1, false) > cv::contourArea(c2, false); });
 
         cv::drawContours(output, black_contours, 0, cv::Scalar(255, 0, 0), 2, 8, cv::noArray(), INT_MAX, roi.tl());
 
         cv::Moments moments = cv::moments(black_contours[0]);
         if (moments.m00 != 0)
         {
-            black_center = cv::Point2f(moments.m10/moments.m00, moments.m01/moments.m00);
+            black_center = cv::Point2f(moments.m10 / moments.m00, moments.m01 / moments.m00);
             black_center += cv::Point2f(static_cast<float>(roi.x), static_cast<float>(roi.y));
             cv::circle(output, black_center, 5, cv::Scalar(0, 0, 255), -1);
         }
     }
 
-    //cv::line(output, cv::Point(0, 100), cv::Point(640, 100), red_color, 3);
-    //cv::line(output, cv::Point(0, 300), cv::Point(640, 300), red_color, 3);
+    // cv::line(output, cv::Point(0, 100), cv::Point(640, 100), red_color, 3);
+    // cv::line(output, cv::Point(0, 300), cv::Point(640, 300), red_color, 3);
 
     return std::make_tuple(output, black_center);
 }
 
-
 int Img_proc::Hoop_Location(cv::Mat &color, cv::Point center)
 {
-    int x_left_bound = IMG_W - ADJUST_X_MARGIN;
-    int x_right_bound = IMG_W + ADJUST_X_MARGIN;
+    int x_left_bound = IMG_W / 2 - ADJUST_X_MARGIN;
+    int x_right_bound = IMG_W / 2 + ADJUST_X_MARGIN;
     int y_top_bound = 10;
     int y_bottom_bound = 470;
 
@@ -238,7 +318,7 @@ int Img_proc::Hoop_Location(cv::Mat &color, cv::Point center)
         putText(color, "Left", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
         x_pixel_toShoot = 1;
     }
-    else if(center.x > x_right_bound)
+    else if (center.x > x_right_bound)
     {
         putText(color, "Right", cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
         x_pixel_toShoot = -1;
@@ -337,7 +417,6 @@ void Img_proc::realsense_thread()
         std::cerr << "An error occurred during streaming: " << e.what() << std::endl;
     }
 }
-
 
 // ********************************************** GETTERS ************************************************** //
 
