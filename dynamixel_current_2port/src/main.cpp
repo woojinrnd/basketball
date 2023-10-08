@@ -46,6 +46,7 @@ int main(int argc, char **argv)
     Dxl_Controller dxl_ctrl(&dxl);
     Callback callback(&trajectory, &IK_, &dxl);
     callback.Write_Arm_Theta();
+    callback.SelectMotion();
     
     while (ros::ok())
     {

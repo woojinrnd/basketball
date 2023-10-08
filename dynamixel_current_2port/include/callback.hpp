@@ -114,7 +114,7 @@ public:
   virtual void L_FSRsensorCallback(const std_msgs::UInt8::ConstPtr &FSR);
   virtual void R_FSRsensorCallback(const std_msgs::UInt8::ConstPtr &FSR);
   virtual void StartMode(const std_msgs::UInt8::ConstPtr &start);
-
+  virtual void Set_Arm_Theta();
   /////////Service callbacek
   ros::ServiceClient client_SendMotion = nh.serviceClient<dynamixel_current_2port::SendMotion>("/Move_decision/SendMotion");
   dynamixel_current_2port::SendMotion srv_SendMotion;
@@ -127,6 +127,7 @@ public:
   virtual void Emergency();
   virtual void Motion_Info();
   virtual void RecieveMotion();
+
 
   // Variable
   const int SPIN_RATE;

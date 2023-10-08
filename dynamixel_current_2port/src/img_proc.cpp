@@ -40,7 +40,7 @@ void Img_proc::create_threshold_trackbar_Black(const std::string &window_name)
     cv::createTrackbar("Threshold_Black", window_name, &threshold_value_black, max_value, on_trackbar);
 }
 
-std::tuple<bool, cv::Point, cv::Point, cv::Point, cv::Point, double, cv::Mat> Img_proc::Is_AreaThreshold(const cv::Mat &image, cv::Scalar lower_bound, cv::Scalar upper_bound, int green_area)
+std::tuple<cv::Mat, bool, std::vector<cv::Point>, double> Img_proc::Is_AreaThreshold(const cv::Mat& image, cv::Scalar lower_bound, cv::Scalar upper_bound, int green_area)
 {
     cv::Mat extract = image.clone();
 
@@ -56,128 +56,79 @@ std::tuple<bool, cv::Point, cv::Point, cv::Point, cv::Point, double, cv::Mat> Im
     cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
     bool is_Green = false;
-    cv::Point maxYPoint(-1, -1);
-    cv::Point minYPoint(-1, INT_MAX);
-    cv::Point maxXPoint(-1, -1);
-    cv::Point minXPoint(INT_MAX, -1);
+    std::vector<cv::Point> largestContour;
 
-    // for (size_t i = 0; i < contours.size(); i++)
-    // {
-    //     if (cv::contourArea(contours[i]) >= green_area && !contours.empty())
-    //     {
-    //         is_Green = true;
+    double maxArea = 0.0;
+    double angle_line = 0.0;
 
-    //         cv::drawContours(extract, contours, i, cv::Scalar(0, 255, 0), 2); // 현재 컨투어만 그리기
-
-    //         for (const auto &pt : contours[i])
-    //         {
-    //             // y 최대
-    //             if (pt.y > maxYPoint.y)
-    //             {
-    //                 maxYPoint = pt;
-    //             }
-    //             // y 최소
-    //             if (pt.y < minYPoint.y)
-    //             {
-    //                 minYPoint = pt;
-    //             }
-    //             // x 최대 (가장 오른쪽)
-    //             if (pt.x > maxXPoint.x)
-    //             {
-    //                 maxXPoint = pt;
-    //             }
-    //             // x 최소 (가장 왼쪽)
-    //             if (pt.x < minXPoint.x)
-    //             {
-    //                 minXPoint = pt;
-    //             }
-    //         }
-    //         break;
-    //     }
-    // }
-
-    // double deltaY = static_cast<double>(maxXPoint.y - minXPoint.y);
-    // double deltaX = static_cast<double>(maxXPoint.x - minXPoint.x);
-    // double angleRadians = std::atan2(deltaY, deltaX);
-    // double angleDegrees = angleRadians * (180.0 / CV_PI);
-
-    if (!contours.empty())
-    {
-        // 가장 큰 활꼴을 선택
-        double maxArea = 0;
-        int maxIdx = -1;
-        for (size_t i = 0; i < contours.size(); i++)
-        {
-            if (contours[i].size() < 5) // 5개 미만의 점을 가진 경계선은 무시
-                continue;
-            double area = cv::contourArea(contours[i]);
-            if (area > maxArea)
-            {
-                maxArea = area;
-                maxIdx = i;
-            }
-
-            for (const auto &pt : contours[i])
-            {
-                // y 최대
-                if (pt.y > maxYPoint.y)
-                {
-                    maxYPoint = pt;
-                }
-                // y 최소
-                if (pt.y < minYPoint.y)
-                {
-                    minYPoint = pt;
-                }
-                // x 최대 (가장 오른쪽)
-                if (pt.x > maxXPoint.x)
-                {
-                    maxXPoint = pt;
-                }
-                // x 최소 (가장 왼쪽)
-                if (pt.x < minXPoint.x)
-                {
-                    minXPoint = pt;
-                }
-            }
-        }
-
-
-        if (maxIdx >= 0)
-        {
+    for (const auto& contour : contours) {
+        double area = cv::contourArea(contour);
+        if (area >= green_area && area > maxArea) {
+            maxArea = area;
+            largestContour = contour;
             is_Green = true;
-            // 활꼴의 접선 방정식 계산
-            cv::RotatedRect minEllipse = cv::fitEllipse(contours[maxIdx]);
-
-            // 접선 방정식의 두 점 가져오기
-            cv::Point2f points[2];
-            minEllipse.points(points);
-            cv::Point2f point1 = points[0];
-            cv::Point2f point2 = points[1];
-
-            // 기울기 계산
-            float a = (point2.y - point1.y) / (point2.x - point1.x);
-
-            // 기울기를 각도로 변환 (라디안에서도 동작)
-            float angle = atan(a) * 180.0 / CV_PI;
-
-            // 각도 출력
-            std::cout << "각도: " << angle << "도" << std::endl;
-
-            // 활꼴 그리기
-            cv::drawContours(extract, contours, maxIdx, cv::Scalar(0, 255, 0), 2);
         }
     }
-    else
+
+    if (is_Green) {
+        cv::drawContours(extract, std::vector<std::vector<cv::Point>>{largestContour}, 0, cv::Scalar(0, 255, 0), 2);
+
+        cv::Point startPoint = largestContour[0];
+        cv::Point endPoint = largestContour[largestContour.size() - 1];
+        double deltaY = static_cast<double>(endPoint.y - startPoint.y);
+        double deltaX = static_cast<double>(endPoint.x - startPoint.x);
+        double angleRadians = std::atan2(deltaY, deltaX);
+        double angleDegrees = angleRadians * (180.0 / CV_PI);
+        angle_line = angleDegrees;
+    }
+    return {extract, is_Green, largestContour, angle_line};
+}
+
+double Img_proc::MinDistanceBetweenContours(cv::Mat input_frame, const std::vector<cv::Point>& contour1, const std::vector<cv::Point>& contour2)
+{
+    double minDistance = 1000;
+    cv::Point closestPoint1, closestPoint2;
+
+    for (const auto& point1 : contour1) {
+        for (const auto& point2 : contour2) {
+            double distance = cv::norm(point1 - point2);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestPoint1 = point1;
+                closestPoint2 = point2;
+            }
+        }
+    }
+    putText(input_frame, "Distance_Foot_Green : " + std::to_string(minDistance), cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
+    cv::line(input_frame, closestPoint1, closestPoint2, green_color, 4);
+
+    return minDistance;
+}
+
+float computeEllipseAngle(const cv::Mat& input_frame, const std::vector<cv::Point>& contour)
+{
+    if (contour.size() < 5)
     {
-        std::cout << "활꼴을 찾을 수 없습니다." << std::endl;
-        is_Green = false;
+        std::cerr << "활꼴을 찾을 수 없습니다" << std::endl;
+        return 0.0f;
     }
 
-    float angleDegrees = atan(a) * 180.0 / CV_PI;
+    cv::RotatedRect minEllipse = cv::fitEllipse(contour);
 
-    return {is_Green, maxYPoint, minYPoint, maxXPoint, minXPoint, angleDegrees, extract};
+    cv::Point2f points[2];
+    minEllipse.points(points);
+    cv::Point2f point1 = points[0];
+    cv::Point2f point2 = points[1];
+
+    float a = (point2.y - point1.y) / (point2.x - point1.x);
+
+    float angle = atan(a) * 180.0 / CV_PI;
+
+    putText(input_frame, "Angle_Green : " + std::to_string(angle), cv::Point(10, 75), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 0, 255), 2);
+
+    return angle;
 }
+
 
 void Img_proc::webcam_thread()
 {
@@ -214,6 +165,9 @@ void Img_proc::webcam_thread()
 
     cv::Mat frame, hsv_frame_white, hsv_frame_yellow, thresh_frame_white, thresh_frame_yellow, gray;
 
+    double Distance_foot_to_green = 1000;
+    float angle_Green = 0;
+
     while (ros::ok())
     {
         cap >> frame;
@@ -223,16 +177,33 @@ void Img_proc::webcam_thread()
         auto Green_Exis = Is_AreaThreshold(frame, lower_bound_green, upper_bound_green, 1000);
         auto Foot_Exis = Is_AreaThreshold(frame, lower_bound_blue, upper_bound_blue, 1000);
 
-        bool is_Green = std::get<0>(Green_Exis);
-        cv::Point Bottom_Green = std::get<2>(Green_Exis);
-        double Green_Angle = std::get<5>(Green_Exis);
+        std::vector<cv::Point>Green_contour = std::get<2>(Green_Exis);
+        std::vector<cv::Point>Blue_contour = std::get<2>(Foot_Exis);
 
-        cv::Point Top_Foot = std::get<2>(Foot_Exis);
+        bool is_Green = std::get<1>(Green_Exis);
 
-        int Distance_Green_Foot = Top_Foot.y - Bottom_Green.y;
+        if(is_Green)
+        {
+            this->Set_img_proc_Far_Hoop_det(false);
+            this->Set_img_proc_Adjust_det(true);
 
-        cv::imshow(window_Green, std::get<6>(Green_Exis));
-        cv::imshow(window_Blue, std::get<6>(Foot_Exis));
+            Distance_foot_to_green = MinDistanceBetweenContours(std::get<0>(Green_Exis), Green_contour, Blue_contour);
+            angle_Green = computeEllipseAngle(std::get<0>(Green_Exis), Green_contour);
+
+            this->Set_contain_adjust_to_foot(Distance_foot_to_green);
+            this->Set_gradient(angle_Green);
+
+
+
+        }
+        else
+        {
+            this->Set_img_proc_Far_Hoop_det(true);
+            this->Set_img_proc_Adjust_det(false);
+        }
+
+        cv::imshow(window_Green, std::get<0>(Green_Exis));
+        cv::imshow(window_Blue, std::get<0>(Foot_Exis));
 
         if (cv::waitKey(1) == 27)
             break;
