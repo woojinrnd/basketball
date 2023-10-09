@@ -18,7 +18,7 @@
 //Default setting
 #define NUMBER_OF_DYNAMIXELS     23
 #define BAUDRATE                 4000000 
-#define DEVICE_NAME              "/dev/ttyUSB2"
+#define DEVICE_NAME              "/dev/ttyUSB0"
 
 
 #define PI                       3.141592

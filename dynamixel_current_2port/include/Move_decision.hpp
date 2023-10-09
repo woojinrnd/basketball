@@ -17,7 +17,7 @@
 
 #define UD_MAX 90
 #define UD_MIN 0
-#define UD_CENTER 15
+#define UD_CENTER 10
 
 #define RL_MAX 90
 #define RL_MIN -90
@@ -28,7 +28,7 @@
 #define NOLINE_ANGLE 15
 
 #define ADJUST_TURN 5
-#define ADJUST_Y_MARGIN 50
+#define ADJUST_Y_MARGIN 125
 
 
 using namespace std;

@@ -42,7 +42,8 @@
 #define PROP_CONTRAST 128
 #define PROP_SATURATION 128
 
-#define ADJUST_X_MARGIN 24
+#define ADJUST_X_MARGIN 40
+#define CREEK 30
 
 using namespace cv;
 using namespace std;
@@ -94,8 +95,8 @@ public:
     cv::Scalar green_color = {0, 255, 0};
     cv::Scalar red_color = (0, 0, 255);
 
-    cv::Scalar lower_bound_led = {160, 150, 150};
-    cv::Scalar upper_bound_led = {170, 255, 255};
+    cv::Scalar lower_bound_led = {160, 50, 20};
+    cv::Scalar upper_bound_led = {179, 255, 255};
 
     cv::Scalar lower_bound_green = {35, 50, 50};
     cv::Scalar upper_bound_green = {85, 255, 255};

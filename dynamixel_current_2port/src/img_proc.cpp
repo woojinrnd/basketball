@@ -175,7 +175,7 @@ void Img_proc::webcam_thread()
             break;
 
         auto Green_Exis = Is_AreaThreshold(frame, lower_bound_green, upper_bound_green, 1000);
-        auto Foot_Exis = Is_AreaThreshold(frame, lower_bound_blue, upper_bound_blue, 1000);
+        auto Foot_Exis = Is_AreaThreshold(frame, lower_bound_led, upper_bound_led, 10);
 
         std::vector<cv::Point>Green_contour = std::get<2>(Green_Exis);
         std::vector<cv::Point>Blue_contour = std::get<2>(Foot_Exis);
@@ -191,15 +191,13 @@ void Img_proc::webcam_thread()
             angle_Green = computeEllipseAngle(std::get<0>(Green_Exis), Green_contour);
 
             this->Set_contain_adjust_to_foot(Distance_foot_to_green);
-            this->Set_gradient(angle_Green);
-
-
-
+            this->Set_adjust_angle(angle_Green);
         }
         else
         {
             this->Set_img_proc_Far_Hoop_det(true);
             this->Set_img_proc_Adjust_det(false);
+            this->Set_adjust_angle(0);
         }
 
         cv::imshow(window_Green, std::get<0>(Green_Exis));
@@ -218,12 +216,12 @@ void Img_proc::webcam_thread()
 
 std::tuple<cv::Mat, cv::Point2f> Img_proc::Hoop_Detect(cv::Mat color, cv::Mat depth, cv::Mat depth_dist, int threshold_value)
 {
-    cv::Mat mask = depth_dist < 1000;
+    cv::Mat mask = depth_dist < 1300;
 
     cv::Mat output;
     color.copyTo(output, mask);
 
-    cv::Mat inverse_mask = depth_dist >= 1000;
+    cv::Mat inverse_mask = depth_dist >= 1300;
     output.setTo(cv::Scalar(255, 255, 255), inverse_mask);
 
     cv::Rect roi(0, 100, output.cols, 200);
@@ -275,8 +273,8 @@ std::tuple<cv::Mat, cv::Point2f> Img_proc::Hoop_Detect(cv::Mat color, cv::Mat de
 
 int Img_proc::Hoop_Location(cv::Mat &color, cv::Point center)
 {
-    int x_left_bound = IMG_W / 2 - ADJUST_X_MARGIN;
-    int x_right_bound = IMG_W / 2 + ADJUST_X_MARGIN;
+    int x_left_bound = (IMG_W / 2 + CREEK) - ADJUST_X_MARGIN;
+    int x_right_bound = (IMG_W / 2 + CREEK) + ADJUST_X_MARGIN;
     int y_top_bound = 10;
     int y_bottom_bound = 470;
 
@@ -327,8 +325,6 @@ void Img_proc::realsense_thread()
 
     const auto window_name_real_color = "Realsense Color Frame";
     cv::namedWindow(window_name_real_color, cv::WINDOW_AUTOSIZE);
-
-    create_threshold_trackbar_Black(window_name_real_color);
 
     create_threshold_trackbar_Black(window_name_real_color);
 

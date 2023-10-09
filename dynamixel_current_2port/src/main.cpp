@@ -46,11 +46,12 @@ int main(int argc, char **argv)
     Dxl_Controller dxl_ctrl(&dxl);
     Callback callback(&trajectory, &IK_, &dxl);
     callback.Write_Arm_Theta();
-    callback.SelectMotion();
+    callback.Set_Arm_Theta();
     
     while (ros::ok())
     {
         callback.Write_Leg_Theta();
+        callback.Write_Arm_Theta();
         dxl.SetThetaRef(callback.All_Theta);
         dxl.syncWriteTheta();
         

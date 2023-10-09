@@ -5,7 +5,7 @@ Move_Decision::Move_Decision(Img_proc *img_procPtr)
     : img_procPtr(img_procPtr),
       FALL_FORWARD_LIMIT(60),
       FALL_BACK_LIMIT(-60),
-      SPIN_RATE(1),
+      SPIN_RATE(100),
       stand_status_(Stand_Status::Stand),
       motion_index_(Motion_Index::InitPose),
       stop_fallen_check_(false),
@@ -119,6 +119,13 @@ void Move_Decision::process()
             Set_Far_Hoop_flg(false);
             Set_No_Hoop_flg(false);
         }
+    }
+
+    if (tmp_adjust_seq == 4 || tmp_adjust_seq == 5)
+    {
+        Set_Adjust_flg(true);
+        Set_Far_Hoop_flg(false);
+        Set_No_Hoop_flg(false);
     }
 }
 
@@ -281,76 +288,119 @@ void Move_Decision::ADJUST_mode()
     // 5 : Initializing
 
     adjust_actual_angle = Get_turn_angle_();
-    adjust_motion = Motion_Index::InitPose;
+    // adjust_motion = Motion_Index::InitPose;
+    img_proc_adjust_angle = img_procPtr->Get_adjust_angle();
+    ROS_ERROR("img_proc_adjust_angle : %lf", img_proc_adjust_angle);
+    ROS_INFO("tmp_adjust_seq: %d", tmp_adjust_seq);
+
 
     // // 0 : Approach to the adjust + Pose Control (Posture(Gradient))
-    if (tmp_adjust_seq == 0)
-    {
-        img_proc_adjust_angle = img_procPtr->Get_adjust_angle();
-        ROS_ERROR("img_proc_adjust_angle : %lf", img_proc_adjust_angle);
-        ROS_ERROR(Str_ADJUST_SEQUENCE_0.c_str());
+    // if (tmp_adjust_seq == 0)
+    // {
+    //     img_proc_adjust_angle = img_procPtr->Get_adjust_angle();
+    //     ROS_ERROR("img_proc_adjust_angle : %lf", img_proc_adjust_angle);
+    //     ROS_ERROR(Str_ADJUST_SEQUENCE_0.c_str());
 
-        if (!Get_select_motion_on_flg())
-        {
-            adjust_motion = Motion_Index::Step_in_place;
-            Set_motion_index_(adjust_motion);
-            Set_select_motion_on_flg(true);
-        }
+    //     if (!Get_select_motion_on_flg())
+    //     {
+    //         adjust_motion = Motion_Index::Step_in_place;
+    //         Set_motion_index_(adjust_motion);
+    //         Set_select_motion_on_flg(true);
+    //     }
 
-        if (!Get_turn_angle_on_flg())
-        {
-            if (img_proc_adjust_angle > 10 || img_proc_adjust_angle < -10)
-            {
-                if (img_proc_adjust_angle >= 15)
-                {
-                    adjust_actual_angle = ADJUST_TURN;
-                }
-                else if (img_proc_adjust_angle <= -15)
-                {
-                    adjust_actual_angle = -ADJUST_TURN;
-                }
-                Set_turn_angle_(adjust_actual_angle);
-                Set_turn_angle_on_flg(true);
-            }
-            else
-            {
-                adjust_posture = true;
-            }
-        }
+    //     if (!Get_turn_angle_on_flg())
+    //     {
+    //         if (img_proc_adjust_angle > 10 || img_proc_adjust_angle < -10)
+    //         {
+    //             if (img_proc_adjust_angle >= 15)
+    //             {
+    //                 adjust_actual_angle = ADJUST_TURN;
+    //             }
+    //             else if (img_proc_adjust_angle <= -15)
+    //             {
+    //                 adjust_actual_angle = -ADJUST_TURN;
+    //             }
+    //             Set_turn_angle_(adjust_actual_angle);
+    //             Set_turn_angle_on_flg(true);
+    //         }
+    //         else
+    //         {
+    //             adjust_posture = true;
+    //         }
+    //     }
 
-        if (adjust_posture == true)
-        {
-            tmp_adjust_seq++;
-            adjust_posture = false;
-        }
-    }
+    //     if (adjust_posture == true)
+    //     {
+    //         tmp_adjust_seq++;
+    //         adjust_posture = false;
+    //     }
+    // }
 
     // 1 : Approach to the adjust + Pose Control (Position)
-    else if (tmp_adjust_seq == 1)
+    if (tmp_adjust_seq == 0)
     {
         // Initializing
         img_proc_adjust_delta_x = img_procPtr->Get_delta_x();
         img_proc_contain_adjust_to_foot = img_procPtr->Get_contain_adjust_to_foot();
 
         ROS_ERROR(Str_ADJUST_SEQUENCE_1.c_str());
+        ROS_ERROR("X diff :%d", img_proc_adjust_delta_x);
         ROS_WARN("Y diff : %d", img_proc_contain_adjust_to_foot);
 
         if (!Get_select_motion_on_flg())
         {
+            // // adjust center X point
+            // if (img_proc_adjust_delta_x < 0)
+            // {
+            //     adjust_motion = Motion_Index::Right_Halfstep;
+            //     Set_motion_index_(adjust_motion);
+            //     Set_select_motion_on_flg(true);
+            //     contain_adjust_X = false;
+            // }
+
+            // else if (img_proc_adjust_delta_x > 0)
+            // {
+            //     adjust_motion = Motion_Index::Left_Halfstep;
+            //     Set_motion_index_(adjust_motion);
+            //     Set_select_motion_on_flg(true);
+            //     contain_adjust_X = false;
+            // }
+
+            // // About adjust X point
+            // else if (img_proc_adjust_delta_x == 0)
+            // {
+            //     ROS_WARN("X diff : %d", img_proc_adjust_delta_x);
+            //     adjust_motion = Motion_Index::InitPose;
+            //     Set_motion_index_(adjust_motion);
+            //     Set_select_motion_on_flg(true);
+            //     contain_adjust_X = true;
+            //     ROS_WARN("X POSITION IS OK!!!!!!!!!!!!!!!!!!!");
+            // }
+
             // adjust center X point
             if (img_proc_adjust_delta_x < 0)
             {
-                adjust_motion = Motion_Index::Right_Halfstep;
+                adjust_motion =  Motion_Index::Step_in_place;
                 Set_motion_index_(adjust_motion);
                 Set_select_motion_on_flg(true);
+                if (!Get_turn_angle_on_flg())
+                {
+                    Set_turn_angle_(-5);
+                    Set_turn_angle_on_flg(true);
+                }
                 contain_adjust_X = false;
             }
 
             else if (img_proc_adjust_delta_x > 0)
             {
-                adjust_motion = Motion_Index::Left_Halfstep;
+                adjust_motion = Motion_Index::Step_in_place;
                 Set_motion_index_(adjust_motion);
                 Set_select_motion_on_flg(true);
+                if (!Get_turn_angle_on_flg())
+                {
+                    Set_turn_angle_(5);
+                    Set_turn_angle_on_flg(true);
+                }
                 contain_adjust_X = false;
             }
 
@@ -373,7 +423,7 @@ void Move_Decision::ADJUST_mode()
                 Set_select_motion_on_flg(true);
             }
 
-            else if (0 < img_proc_contain_adjust_to_foot < ADJUST_Y_MARGIN)
+            else if (img_proc_contain_adjust_to_foot < ADJUST_Y_MARGIN)
             {
                 contain_adjust_Y = true;
                 ROS_WARN("Y POSITION IS OK!!!!!!!!!!!!!!!!!!!");
@@ -395,54 +445,54 @@ void Move_Decision::ADJUST_mode()
             }
         }
     }
+    
 
-    // 2 : Approach to the adjust + Pose Control (Posture(Gradient))
-    else if (tmp_adjust_seq == 2)
-    {
-        img_proc_adjust_angle = img_procPtr->Get_adjust_angle();
-        ROS_ERROR("img_proc_adjust_angle : %lf", img_proc_adjust_angle);
-        ROS_ERROR(Str_ADJUST_SEQUENCE_2.c_str());
+    // // 2 : Approach to the adjust + Pose Control (Posture(Gradient))
+    // else if (tmp_adjust_seq == 2)
+    // {
+    //     img_proc_adjust_angle = img_procPtr->Get_adjust_angle();
+    //     ROS_ERROR("img_proc_adjust_angle : %lf", img_proc_adjust_angle);
+    //     ROS_ERROR(Str_ADJUST_SEQUENCE_2.c_str());
 
-        if (!Get_select_motion_on_flg())
-        {
-            adjust_motion = Motion_Index::Step_in_place;
-            Set_motion_index_(adjust_motion);
-            Set_select_motion_on_flg(true);
-        }
+    //     if (!Get_select_motion_on_flg())
+    //     {
+    //         adjust_motion = Motion_Index::Step_in_place;
+    //         Set_motion_index_(adjust_motion);
+    //         Set_select_motion_on_flg(true);
+    //     }
 
-        if (!Get_turn_angle_on_flg())
-        {
-            if (img_proc_adjust_angle > 10 || img_proc_adjust_angle < -10)
-            {
-                if (img_proc_adjust_angle >= 15)
-                {
-                    adjust_actual_angle = ADJUST_TURN;
-                }
-                else if (img_proc_adjust_angle <= -15)
-                {
-                    adjust_actual_angle = -ADJUST_TURN;
-                }
-                Set_turn_angle_(adjust_actual_angle);
-                Set_turn_angle_on_flg(true);
-            }
-            else
-            {
-                adjust_posture = true;
-            }
-        }
+    //     if (!Get_turn_angle_on_flg())
+    //     {
+    //         if (img_proc_adjust_angle > 10 || img_proc_adjust_angle < -10)
+    //         {
+    //             if (img_proc_adjust_angle >= 15)
+    //             {
+    //                 adjust_actual_angle = ADJUST_TURN;
+    //             }
+    //             else if (img_proc_adjust_angle <= -15)
+    //             {
+    //                 adjust_actual_angle = -ADJUST_TURN;
+    //             }
+    //             Set_turn_angle_(adjust_actual_angle);
+    //             Set_turn_angle_on_flg(true);
+    //         }
+    //         else
+    //         {
+    //             adjust_posture = true;
+    //         }
+    //     }
 
-        if (adjust_posture == true)
-        {
-            if (finish_past != Get_SM_req_finish())
-            {
-                tmp_adjust_seq++;
-                adjust_posture = false;
-            }
-        }
-    }
-
-    // 3 : Motion : Ready_to_throw
-    else if (tmp_adjust_seq == 3)
+    //     if (adjust_posture == true)
+    //     {
+    //         if (finish_past != Get_SM_req_finish())
+    //         {
+    //             tmp_adjust_seq++;
+    //             adjust_posture = false;
+    //         }
+    //     }
+    // }
+    // 4 : Motion : Ready_to_throw
+    else if (tmp_adjust_seq == 1)
     {
         ROS_ERROR(Str_ADJUST_SEQUENCE_3.c_str());
         if (!Get_select_motion_on_flg() && Get_SM_req_finish())
@@ -454,35 +504,35 @@ void Move_Decision::ADJUST_mode()
         }
     }
 
-    // 4 : Motion : Shoot
-    else if (tmp_adjust_seq == 4)
+    // 5 : Motion : Shoot
+    else if (tmp_adjust_seq == 2)
     {
         ROS_ERROR(Str_ADJUST_SEQUENCE_4.c_str());
-        if (!Get_select_motion_on_flg() && Get_SM_req_finish())
+        if (!Get_select_motion_on_flg() /* && Get_SM_req_finish() */)
         {
             adjust_motion = Motion_Index::Shoot;
             Set_motion_index_(adjust_motion);
             Set_select_motion_on_flg(true);
-            tmp_adjust_seq++;
+            // tmp_adjust_seq =0;
         }
     }
 
-    // 5 : Initializing
-    else if (tmp_adjust_seq == 5)
-    {
-        ROS_ERROR(Str_ADJUST_SEQUENCE_5.c_str());
-        if (!Get_select_motion_on_flg())
-        {
-            adjust_motion = Motion_Index::InitPose;
-            Set_motion_index_(adjust_motion);
-            Set_select_motion_on_flg(true);
-        }
-        // Sequence++
-        if (finish_past != Get_SM_req_finish())
-        {
-            tmp_adjust_seq = 0;
-        }
-    }
+    // // 5 : Initializing
+    // else if (tmp_adjust_seq == 3)
+    // {
+    //     ROS_ERROR(Str_ADJUST_SEQUENCE_5.c_str());
+    //     if (!Get_select_motion_on_flg())
+    //     {
+    //         adjust_motion = Motion_Index::InitPose;
+    //         Set_motion_index_(adjust_motion);
+    //         Set_select_motion_on_flg(true);
+    //     }
+    //     // Sequence++
+    //     if (finish_past != Get_SM_req_finish())
+    //     {
+    //         tmp_adjust_seq = 0;
+    //     }
+    // }
 }
 
 void Move_Decision::STOP_mode()

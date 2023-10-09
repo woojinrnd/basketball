@@ -41,15 +41,16 @@ void Callback::R_FSRsensorCallback(const std_msgs::UInt8::ConstPtr &FSR)
 
 void Callback::StartMode(const std_msgs::UInt8::ConstPtr &start)
 {
-    // START : 30
-    // GRAB : 50
+    // START : 50
+    // GRAB : 30
     // FINISH : 100
     if (start->data == Motion_Index::START)
     {
         indext = 0;
         mode = Motion_Index::START;
         IK_Ptr->Change_Com_Height(30);
-        trajectoryPtr->Go_Straight(0.05, 0.3, 0.05);
+        trajectoryPtr->Go_Straight(0.05, 1.45, 0.05);
+        // trajectoryPtr->Go_Straight(0.05, 0.15, 0.05);
         IK_Ptr->Get_Step_n(trajectoryPtr->Return_Step_n());
         IK_Ptr->Change_Angle_Compensation(3.5, 3.5, 0, 3.5, 3.5, 3.5, 0, -3.5);
         IK_Ptr->Set_Angle_Compensation(135);
@@ -67,12 +68,16 @@ void Callback::StartMode(const std_msgs::UInt8::ConstPtr &start)
     else if (start->data == Motion_Index::FINISH)
     {
         mode = Motion_Index::InitPose;
-        trajectoryPtr->Ref_RL_x = MatrixXd::Zero(1, 30);
-        trajectoryPtr->Ref_LL_x = MatrixXd::Zero(1, 30);
-        trajectoryPtr->Ref_RL_y = -0.06 * MatrixXd::Ones(1, 30);
-        trajectoryPtr->Ref_LL_y = 0.06 * MatrixXd::Ones(1, 30);
-        trajectoryPtr->Ref_RL_z = MatrixXd::Zero(1, 30);
-        trajectoryPtr->Ref_LL_z = MatrixXd::Zero(1, 30);
+        IK_Ptr->Change_Com_Height(30);
+        trajectoryPtr->Ref_RL_x = MatrixXd::Zero(1, 500);
+        trajectoryPtr->Ref_LL_x = MatrixXd::Zero(1, 500);
+        trajectoryPtr->Ref_RL_y = -0.06 * MatrixXd::Ones(1, 500);
+        trajectoryPtr->Ref_LL_y = 0.06 * MatrixXd::Ones(1, 500);
+        trajectoryPtr->Ref_RL_z = trajectoryPtr->RF_zsimulation_standup3(-0.025);
+        trajectoryPtr->Ref_LL_z = trajectoryPtr->LF_zsimulation_standup3(-0.025);
+        All_Theta[20] = 0 * DEG2RAD;
+        All_Theta[12] = 0 * DEG2RAD;
+        indext = 0;
         emergency = 1;
         srv_SendMotion.request.TA_finish = false;
         srv_SendMotion.request.SM_finish = false;
@@ -402,7 +407,7 @@ void Callback::SelectMotion()
         IK_Ptr->Get_Step_n(trajectoryPtr->Return_Step_n());
         IK_Ptr->Change_Angle_Compensation(3.5, 3.5, 0, 3.5, 3.5, 3.5, 0, -3.5);
         IK_Ptr->Set_Angle_Compensation(135);
-        trajectoryPtr->Stop_Trajectory_straightwalk(0.05);
+ 
         indext = 0;
     }
 
@@ -414,7 +419,6 @@ void Callback::SelectMotion()
         IK_Ptr->Get_Step_n(trajectoryPtr->Return_Step_n());
         IK_Ptr->Change_Angle_Compensation(3.5, 3.5, 0, 3.5, 3.5, 3.5, 0, -3.5);
         IK_Ptr->Set_Angle_Compensation(135);
-        trajectoryPtr->Stop_Trajectory_straightwalk(0.05);
         indext = 0;
     }
 
@@ -435,7 +439,7 @@ void Callback::SelectMotion()
         IK_Ptr->Change_Com_Height(30);
         trajectoryPtr->Step_in_place(0.05, 0.25, 0.05);
         IK_Ptr->Get_Step_n(trajectoryPtr->Return_Step_n());
-        IK_Ptr->Change_Angle_Compensation(3.5, 3.5, 0, 3.5, 3.5, 3.5, 0, -3.5);
+        IK_Ptr->Change_Angle_Compensation(3.5, 3.5, 0, 1.5, 3.5, 3.5, 0, -1.5);
         IK_Ptr->Set_Angle_Compensation(135);
         indext = 0;
     }
@@ -477,7 +481,7 @@ void Callback::SelectMotion()
     {
         mode = Motion_Index::Forward_Halfstep;
         IK_Ptr->Change_Com_Height(30);
-        trajectoryPtr->Go_Straight(0.01, 0.03, 0.025);
+        trajectoryPtr->Go_Straight(0.01, 0.03, 0.05);
         IK_Ptr->Get_Step_n(trajectoryPtr->Return_Step_n());
         IK_Ptr->Change_Angle_Compensation(3.5, 3.5, 0, 3.5, 3.5, 3.5, 0, -3.5);
         IK_Ptr->Set_Angle_Compensation(135);
@@ -563,6 +567,18 @@ void Callback::SelectMotion()
         trajectoryPtr->Ref_LL_z = trajectoryPtr->LF_zsimulation_sitdown3(-0.025);
         indext = 0;
     }
+    else if (res_mode == Motion_Index::Shoot)
+    {
+        mode = Motion_Index::Shoot;
+        IK_Ptr->Change_Com_Height(5);
+        trajectoryPtr->Ref_RL_x = MatrixXd::Zero(1, 500);
+        trajectoryPtr->Ref_LL_x = MatrixXd::Zero(1, 500);
+        trajectoryPtr->Ref_RL_y = -0.06 * MatrixXd::Ones(1, 500);
+        trajectoryPtr->Ref_LL_y = 0.06 * MatrixXd::Ones(1, 500);
+        trajectoryPtr->Ref_RL_z = MatrixXd::Zero(1, 500);;
+        trajectoryPtr->Ref_LL_z = MatrixXd::Zero(1, 500);;
+        indext = 0;
+    }
 
     else if (res_mode == Motion_Index::Shoot)
     {
@@ -629,24 +645,18 @@ void Callback::Write_Leg_Theta()
             }
             Check_FSR();
         }
-        else if (mode == Motion_Index::Left_2step || mode == Motion_Index::Left_Halfstep || mode == Motion_Index::Left_6step)
+        else if (mode == Motion_Index::Left_2step || mode == Motion_Index::Left_Halfstep || mode == Motion_Index::Left_6step || mode == Motion_Index::Left_1step)
         {
             IK_Ptr->BRP_Simulation(trajectoryPtr->Ref_RL_x, trajectoryPtr->Ref_RL_y, trajectoryPtr->Ref_RL_z, trajectoryPtr->Ref_LL_x, trajectoryPtr->Ref_LL_y, trajectoryPtr->Ref_LL_z, indext);
             IK_Ptr->Angle_Compensation_Leftwalk(indext);
         }
 
-        else if (mode == Motion_Index::Right_2step || mode == Motion_Index::Right_Halfstep || mode == Motion_Index::Right_6step)
+        else if (mode == Motion_Index::Right_2step || mode == Motion_Index::Right_Halfstep || mode == Motion_Index::Right_6step || mode == Motion_Index::Right_1step )
         {
             IK_Ptr->BRP_Simulation(trajectoryPtr->Ref_RL_x, trajectoryPtr->Ref_RL_y, trajectoryPtr->Ref_RL_z, trajectoryPtr->Ref_LL_x, trajectoryPtr->Ref_LL_y, trajectoryPtr->Ref_LL_z, indext);
             IK_Ptr->Angle_Compensation_Rightwalk(indext);
         }
 
-        else if (mode == Motion_Index::Shoot)
-        {
-
-            IK_Ptr->BRP_Simulation(trajectoryPtr->Ref_RL_x, trajectoryPtr->Ref_RL_y, trajectoryPtr->Ref_RL_z, trajectoryPtr->Ref_LL_x, trajectoryPtr->Ref_LL_y, trajectoryPtr->Ref_LL_z, indext);
-            IK_Ptr->Angle_Compensation_Huddle(indext);
-        }
         else if (mode == Motion_Index::ForWard_fast4step)
         {
 
@@ -660,15 +670,17 @@ void Callback::Write_Leg_Theta()
             IK_Ptr->Angle_Compensation(indext, trajectoryPtr->Ref_RL_x.cols());
         }
 
-        else if (mode == Motion_Index::Ready_to_throw)
+        else if (mode == Motion_Index::Ready_to_throw || mode == Motion_Index::FINISH)
         {
             IK_Ptr->BRP_Simulation(trajectoryPtr->Ref_RL_x, trajectoryPtr->Ref_RL_y, trajectoryPtr->Ref_RL_z, trajectoryPtr->Ref_LL_x, trajectoryPtr->Ref_LL_y, trajectoryPtr->Ref_LL_z, indext);
-            IK_Ptr->Angle_Compensation(indext, trajectoryPtr->Ref_RL_x.cols());
         }
         else if (mode == Motion_Index::Shoot)
         {
             thro = -10;
+            IK_Ptr->BRP_Simulation(trajectoryPtr->Ref_RL_x, trajectoryPtr->Ref_RL_y, trajectoryPtr->Ref_RL_z, trajectoryPtr->Ref_LL_x, trajectoryPtr->Ref_LL_y, trajectoryPtr->Ref_LL_z, indext);
+
         }
+
         if (indext >= trajectoryPtr->Ref_RL_x.cols() - 2 && indext != 0)
         {
             indext -= 1;
@@ -682,13 +694,13 @@ void Callback::Write_Leg_Theta()
 
     All_Theta[0] = -IK_Ptr->RL_th[0];
     All_Theta[1] = IK_Ptr->RL_th[1] - 3 * DEG2RAD;
-    All_Theta[2] = IK_Ptr->RL_th[2] - 10.74 * DEG2RAD + thro;
+    All_Theta[2] = IK_Ptr->RL_th[2] - 10.74 * DEG2RAD + thro * DEG2RAD;
     All_Theta[3] = -IK_Ptr->RL_th[3] + 38.34 * DEG2RAD;
     All_Theta[4] = -IK_Ptr->RL_th[4] + 24.22 * DEG2RAD;
     All_Theta[5] = -IK_Ptr->RL_th[5] - 2* DEG2RAD;
     All_Theta[6] = -IK_Ptr->LL_th[0];
     All_Theta[7] = IK_Ptr->LL_th[1] + 2 * DEG2RAD;
-    All_Theta[8] = -IK_Ptr->LL_th[2] + 10.74 * DEG2RAD - thro;
+    All_Theta[8] = -IK_Ptr->LL_th[2] + 10.74 * DEG2RAD - thro * DEG2RAD;
     All_Theta[9] = IK_Ptr->LL_th[3] - 40.34 * DEG2RAD;
     All_Theta[10] = IK_Ptr->LL_th[4] - 22.22 * DEG2RAD;
     All_Theta[11] = -IK_Ptr->LL_th[5] + 2 * DEG2RAD;
@@ -703,7 +715,7 @@ void Callback::Set_Arm_Theta()
     All_Theta[17] = -90 * DEG2RAD;
     All_Theta[18] = 90 * DEG2RAD;
     All_Theta[19] = 0 * DEG2RAD;
-    All_Theta[20] = 0 * DEG2RAD;
+    All_Theta[20] = -45 * DEG2RAD;
     All_Theta[22] = 30 * DEG2RAD;
 
 }
@@ -712,7 +724,7 @@ void Callback::Write_Arm_Theta()
     // Grab the ball
     if (mode == Motion_Index::Grab)
     {
-        All_Theta[20] = 45 * DEG2RAD;
+        All_Theta[20] = 0 * DEG2RAD;
     }
 
     // Ready to throw
@@ -721,7 +733,7 @@ void Callback::Write_Arm_Theta()
         All_Theta[14] = 0 * DEG2RAD - 90 * DEG2RAD;
         All_Theta[16] = 90 * DEG2RAD;
         All_Theta[18] = 90 * DEG2RAD - 30 * DEG2RAD;
-        All_Theta[20] = 45 * DEG2RAD;
+        All_Theta[20] = 0 * DEG2RAD;
         All_Theta[12] = 0; // 0 * DEG2RAD;
     }
 
@@ -731,7 +743,7 @@ void Callback::Write_Arm_Theta()
         All_Theta[14] = 0 * DEG2RAD - 60 * DEG2RAD;
         All_Theta[16] = 90 * DEG2RAD;
         All_Theta[18] = 0 * DEG2RAD;
-        All_Theta[20] = 0 * DEG2RAD;
+        All_Theta[20] = -45 * DEG2RAD;
         All_Theta[12] = -30 * DEG2RAD;
     }
 
@@ -741,6 +753,5 @@ void Callback::Write_Arm_Theta()
         All_Theta[14] = 90 * DEG2RAD;
         All_Theta[16] = 60 * DEG2RAD;
         All_Theta[18] = 90 * DEG2RAD;
-        All_Theta[20] = 0 * DEG2RAD;
     }
 }
